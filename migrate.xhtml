@@ -12,32 +12,58 @@
 		<script type="text/javascript" src="http://netdna.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"></script>
 		<link rel="shortcut icon" href="/ops/images/orbeon-icon-16.ico" />
 		<link rel="icon" href="/ops/images/orbeon-icon-16.png" type="image/png" />
-		<link rel="stylesheet" href="/apps/academia-migrate/css/style.css" />
+		<link rel="stylesheet" href="/apps/academia-migrate/css/xforms.css" />
 
 		<!-- model -->
 		<xforms:model>
 			<xforms:instance id="control-instance" xxforms:exclude-result-prefixes="#all">
 				<controls xmlns="">
 					<zenodo_access_token></zenodo_access_token>
+					<academia_uri></academia_uri>
 				</controls>
 			</xforms:instance>
 
+			<!-- REST responses -->
 			<xforms:instance id="zenodo-response">
 				<response xmlns=""></response>
 			</xforms:instance>
 
-			<!-- **************** BINDINGS ********************** -->
+			<xforms:instance id="academia-response">
+				<response xmlns=""></response>
+			</xforms:instance>
+			
+			<!-- list instances -->
 
+			<!-- **************** BINDINGS ********************** -->
+			<xforms:bind nodeset="instance('control-instance')">
+				<xforms:bind nodeset="academia_uri"
+					constraint="matches(., 'https://[a-z]+\.academia\.edu/[A-Za-z]+')"></xforms:bind>
+			</xforms:bind>
+			
+			<xforms:bind nodeset="instance('academia-response')">
+				<xforms:bind nodeset="records">
+					<xforms:bind nodeset="record">
+						<xforms:bind nodeset="@migrate" type="xs:boolean"/>
+					</xforms:bind>
+				</xforms:bind>
+			</xforms:bind>
 
 			<!-- **************** SUBMISSIONS ********************** -->
 			<xforms:submission id="validate-token"
 				resource="https://zenodo.org/api/deposit/depositions/?access_token={instance('control-instance')/zenodo_access_token}"
 				ref="instance('zenodo-response')" replace="instance" method="get"
 				mediatype="application/json">
-				<xforms:message ev:event="xforms-submit-error" level="modal">Unable to get respone
+				<xforms:message ev:event="xforms-submit-error" level="modal">Unable to get response
 					from Zenodo.</xforms:message>
 			</xforms:submission>
 
+			<!-- get response from PHP submission -->
+			<xforms:submission id="get-records" serialization="none" method="get"
+				action="/academia-migrate/records?uri={instance('control-instance')/academia_uri}"
+				instance="academia-response" replace="instance">
+				<xforms:message ev:event="xforms-submit-error" level="modal">Error in receiving
+					well-formed XML response from PHP script.</xforms:message>
+			</xforms:submission>
 		</xforms:model>
 	</head>
 
@@ -47,6 +73,47 @@
 				<div class="col-md-12">
 					<h1>Academia Migrate</h1>
 					<xforms:switch>
+						<xforms:case id="academia-records">
+							<xforms:group ref="instance('academia-response')">
+								<xforms:group ref=".[child::*]">
+									<xforms:group ref=".[count(descendant::record) &gt; 0]">
+										<h3>Records</h3>
+										<table class="table">
+											<xforms:repeat nodeset="descendant::record">
+												<tr>
+													<td>
+														<xforms:input ref="@migrate"/>
+													</td>
+													<td>
+														<h4><xforms:output ref="title"/></h4>
+													</td>
+												</tr>
+											</xforms:repeat>
+										</table>
+										
+									</xforms:group>
+									<xforms:group ref=".[child::error]">
+										<h3>Error</h3>
+										<p><xforms:output ref="error"/></p>
+									</xforms:group>
+								</xforms:group>
+								<xforms:group ref=".[not(child::*)]">
+									<div>
+										<xforms:input ref="instance('control-instance')/academia_uri">
+											<xforms:label>Profile URL</xforms:label>
+											<xforms:alert>URL doesn't match expression for an Academia.edu
+												profile</xforms:alert>
+										</xforms:input>
+										<xforms:trigger>
+											<xforms:label>Get Records</xforms:label>
+											<xforms:action ev:event="DOMActivate">
+												<xforms:send submission="get-records"></xforms:send>
+											</xforms:action>
+										</xforms:trigger>
+									</div>
+								</xforms:group>
+							</xforms:group>
+						</xforms:case>
 						<xforms:case id="authenticate-zenodo">
 							<xforms:input ref="instance('control-instance')/zenodo_access_token"
 								incremental="true">

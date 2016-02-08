@@ -15,6 +15,7 @@
 <config xmlns="http://www.orbeon.com/oxf/controller" xmlns:oxf="http://www.orbeon.com/oxf/processors" matcher="oxf:perl5-matcher">
 
 	<page path="/academia-migrate/" view="migrate.xhtml"/>
+	<page path="/academia-migrate/records" view="xpl/scrape.xpl"/>
 	
 	<epilogue url="oxf:/config/epilogue.xpl"/>
 </config>

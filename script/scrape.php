@@ -4,10 +4,10 @@
  * DATE: Feburary 2016
  * FUNCTION: an academia.edu profile URI into the script to parse works (as JSON) owned by the user
  * in order to restructure into XML to read by the XForms engine to initiate a migration into Zenodo.org.
- * REQUIRED LIBRARIES: php5, php5-curl
+ * REQUIRED LIBRARIES: php5, php5-curl, php5-cgi
  * LICENSE, MORE INFO: 
  **************/
-
+ 
 //set output header
 header('Content-Type: application/xml');
 
@@ -120,14 +120,19 @@ function process_html($output, $writer) {
 							$writer->writeElement('publication_name', $metadata->publication_name);
 						}
 	
+						//publication date is mandatory
 						if (isset($metadata->publication_date)){
 							foreach ($metadata->publication_date as $k=>$v){
-								if (is_string($v)){
+								if (is_string($v) && $v != 'errors'){
 									$writer->writeElement('publication_' . $k, $v);
 								} else {
 									$writer->writeElement('publication_' . $k, '');
 								}
 							}
+						} else {
+							$writer->writeElement('publication_day');
+							$writer->writeElement('publication_month');
+							$writer->writeElement('publication_year');
 						}
 	
 						if (isset($metadata->conference_start_date) || isset($metadata->conference_end_date)){
