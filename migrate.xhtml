@@ -1,0 +1,68 @@
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:xhtml="http://www.w3.org/1999/xhtml"
+	xmlns:xforms="http://www.w3.org/2002/xforms" xmlns:xs="http://www.w3.org/2001/XMLSchema"
+	xmlns:ev="http://www.w3.org/2001/xml-events" xmlns:xxforms="http://orbeon.org/oxf/xml/xforms"
+	xmlns:fr="http://orbeon.org/oxf/xml/form-runner">
+	<head>
+		<title>Academia Migrate</title>
+		<link rel="stylesheet" href="/fr/style/bootstrap/css/bootstrap.css" type="text/css" />
+		<link rel="stylesheet" href="/fr/style/form-runner-bootstrap-override.css" type="text/css" />
+
+		<link rel="stylesheet"
+			href="http://netdna.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" />
+		<script type="text/javascript" src="http://netdna.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"></script>
+		<link rel="shortcut icon" href="/ops/images/orbeon-icon-16.ico" />
+		<link rel="icon" href="/ops/images/orbeon-icon-16.png" type="image/png" />
+		<link rel="stylesheet" href="/apps/academia-migrate/css/style.css" />
+
+		<!-- model -->
+		<xforms:model>
+			<xforms:instance id="control-instance" xxforms:exclude-result-prefixes="#all">
+				<controls xmlns="">
+					<zenodo_access_token></zenodo_access_token>
+				</controls>
+			</xforms:instance>
+
+			<xforms:instance id="zenodo-response">
+				<response xmlns=""></response>
+			</xforms:instance>
+
+			<!-- **************** BINDINGS ********************** -->
+
+
+			<!-- **************** SUBMISSIONS ********************** -->
+			<xforms:submission id="validate-token"
+				resource="https://zenodo.org/api/deposit/depositions/?access_token={instance('control-instance')/zenodo_access_token}"
+				ref="instance('zenodo-response')" replace="instance" method="get"
+				mediatype="application/json">
+				<xforms:message ev:event="xforms-submit-error" level="modal">Unable to get respone
+					from Zenodo.</xforms:message>
+			</xforms:submission>
+
+		</xforms:model>
+	</head>
+
+	<body>
+		<div class="container-fluid">
+			<div class="row">
+				<div class="col-md-12">
+					<h1>Academia Migrate</h1>
+					<xforms:switch>
+						<xforms:case id="authenticate-zenodo">
+							<xforms:input ref="instance('control-instance')/zenodo_access_token"
+								incremental="true">
+								<xforms:label>Token</xforms:label>
+							</xforms:input>
+							<xforms:trigger>
+								<xforms:label>Validate</xforms:label>
+								<xforms:action ev:event="DOMActivate">
+									<xforms:send submission="validate-token"></xforms:send>
+								</xforms:action>
+							</xforms:trigger>
+						</xforms:case>
+					</xforms:switch>
+				</div>
+			</div>
+		</div>
+		<fr:xforms-inspector></fr:xforms-inspector>
+	</body>
+</html>
