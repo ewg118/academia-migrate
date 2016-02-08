@@ -8,12 +8,14 @@
  * LICENSE, MORE INFO: 
  **************/
 
+//set output header
+header('Content-Type: application/xml');
+
 //get uri of academia.edu profile from request parameter
 //$uri = 'https://numismatics.academia.edu/EthanGruber';
 
 //the line below is for passing request parameters from the command line.
 //parse_str(implode('&', array_slice($argv, 1)), $_GET);
-
 $uri = $_GET['uri'];
 
 //develop XML serialization
