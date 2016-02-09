@@ -185,11 +185,11 @@
 															<xforms:input ref="@migrate"/>
 														</td>
 														<td>
-															<h4>
+															<h3>
 																<a href="{url}" target="_blank" title="{url}">
 																	<xforms:output ref="title"/>
 																</a>
-															</h4>
+															</h3>
 															<div class="trigger-container">
 																<xforms:group ref=".[publication_type='article' and not(child::journal_title)]">
 																	<xforms:trigger appearance="minimal">
@@ -283,6 +283,14 @@
 																<xforms:label>Publication Date</xforms:label>
 																<xforms:alert>Required</xforms:alert>
 															</xforms:input>
+															
+															<xforms:group ref="abstract">
+																<div>
+																	<xforms:output ref=".">
+																		<xforms:label>Abstract</xforms:label>
+																	</xforms:output>
+																</div>
+															</xforms:group>
 															
 															<!-- conference information -->
 															<xforms:group ref="conference_title">
@@ -418,6 +426,6 @@
 				</div>
 			</div>
 		</div>
-		<fr:xforms-inspector></fr:xforms-inspector>
+		<!--<fr:xforms-inspector></fr:xforms-inspector>-->
 	</body>
 </html>

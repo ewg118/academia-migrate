@@ -20,7 +20,6 @@ $uri = $_GET['uri'];
 
 //develop XML serialization
 $writer = new XMLWriter();
-//$writer->openURI("response.xml");
 $writer->openURI('php://output');
 $writer->startDocument('1.0','UTF-8');
 $writer->setIndent(true);
@@ -81,6 +80,8 @@ function process_html($output, $writer) {
 					if ($obj->attachments) {						
 						//add id into array of ids to prevent processing of duplicates in a page
 						$ids[] = $obj->id;
+						//gather metadata
+						$metadata = $obj->metadata;
 						
 						//begin record metadata
 						$writer->startElement('record');
@@ -110,12 +111,12 @@ function process_html($output, $writer) {
 						} else {
 							//set defaults if there is no section
 							$writer->writeElement('upload_type', 'publication');
-							$writer->writeElement('publication_type', 'article');
+							if (isset($metadata->conference_start_date) || isset($metadata->conference_end_date)){
+									$writer->writeElement('publication_type', 'conferencepaper');
+								} else {
+									$writer->writeElement('publication_type', 'article');
+								}
 						}
-							
-	
-						//gather metadata
-						$metadata = $obj->metadata;
 	
 						if (isset($metadata->abstract)){
 							$writer->writeElement('abstract', $metadata->abstract);
