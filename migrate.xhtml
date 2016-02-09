@@ -19,7 +19,8 @@
 			<xforms:instance id="control-instance" xxforms:exclude-result-prefixes="#all">
 				<controls xmlns="">
 					<zenodo_access_token></zenodo_access_token>
-					<academia_uri></academia_uri>
+					<academia_uri>https://numismatics.academia.edu/EthanGruber</academia_uri>
+					<upload-trigger>false</upload-trigger>
 				</controls>
 			</xforms:instance>
 
@@ -33,20 +34,77 @@
 			</xforms:instance>
 			
 			<!-- list instances -->
+			<xforms:instance id="licenses">
+				<licenses xmlns="">
+					<license id="cc-by-sa">Creative Commons Attribution-ShareAlike</license>
+					<license id="cc-by">Creative Commons Attribution</license>
+					<license id="cc-zero">Creative Commons Public Domain</license>
+					<license id="cc-nc">Creative Commons Non-Commercial</license>
+					<license id="cc-by-nd-4.0">Creative Commons Attribution-NoDerivs</license>
+					<license id="cc-by-nc-4.0">Creative Commons Attribution-NonCommercial</license>
+					<license id="cc-by-nc-nd-4.0">Creative Commons Attribution-NonCommercial-NoDerivs</license>
+					<license id="cc-by-nc-sa-4.0">Creative Commons Attribution-NonCommercial-ShareAlike</license>
+				</licenses>
+			</xforms:instance>
+			
+			<xforms:instance id="upload_types">
+				<upload_types xmlns="">
+					<upload_type>publication</upload_type>	
+					<upload_type>poster</upload_type>
+					<upload_type>presentation</upload_type>
+				</upload_types>
+			</xforms:instance>
+			
+			<xforms:instance id="publication_types">
+				<publication_types xmlns="">
+					<publication_type>book</publication_type>
+					<publication_type>section</publication_type>
+					<publication_type>conferencepaper</publication_type>
+					<publication_type>article</publication_type>
+					<publication_type>patent</publication_type>
+					<publication_type>preprint</publication_type>
+					<publication_type>report</publication_type>
+					<publication_type>softwaredocumentation</publication_type>
+					<publication_type>thesis</publication_type>
+					<publication_type>technicalnote</publication_type>
+					<publication_type>workingpaper</publication_type>
+					<publication_type>other</publication_type>
+				</publication_types>
+			</xforms:instance>
 
 			<!-- **************** BINDINGS ********************** -->
 			<xforms:bind nodeset="instance('control-instance')">
 				<xforms:bind nodeset="academia_uri"
 					constraint="matches(., 'https://[a-z]+\.academia\.edu/[A-Za-z]+')"></xforms:bind>
+				<xforms:bind id="upload-trigger" nodeset="upload-trigger" type="xs:boolean" readonly=". != true()"></xforms:bind>
 			</xforms:bind>
 			
 			<xforms:bind nodeset="instance('academia-response')">
 				<xforms:bind nodeset="records">
 					<xforms:bind nodeset="record">
 						<xforms:bind nodeset="@migrate" type="xs:boolean"/>
+						<xforms:bind nodeset="publication_date" type="xs:date" required="true()"/>
+						<xforms:bind nodeset="partof_title" required="../publication_type='section'" relevant="../publication_type='section'"/>
+						<xforms:bind nodeset="journal_title" required="../publication_type='article'" relevant="../publication_type='article'"/>
+						<xforms:bind nodeset="journal_volume" relevant="../publication_type='article'"/>
+						<xforms:bind nodeset="journal_issue" relevant="../publication_type='article'"/>
+						<xforms:bind nodeset="journal_pages" relevant="../publication_type='article'"/>
+						<xforms:bind nodeset="thesis_university" required="../publication_type='thesis'" relevant="../publication_type='thesis'"/>
+						<xforms:bind nodeset="conference_title" required="../publication_type='conferencepaper'" relevant="../publication_type='conferencepaper'"/>
+						<xforms:bind nodeset="conference_dates" required="../conference_title" relevant="../publication_type='conferencepaper'"/>
+						<xforms:bind nodeset="conference_place" required="../conference_title" relevant="../publication_type='conferencepaper'"/>
 					</xforms:bind>
 				</xforms:bind>
 			</xforms:bind>
+			
+			<!-- **************** DYNAMIC VALIDATION CONTROLS ********************** -->
+			<xforms:action ev:event="xxforms-invalid" ev:observer="academia-response">
+				<xforms:setvalue ref="instance('control-instance')/upload-trigger" value="false()"></xforms:setvalue>
+			</xforms:action>
+			
+			<xforms:action ev:event="xxforms-valid" ev:observer="academia-response">
+				<xforms:setvalue ref="instance('control-instance')/upload-trigger" value="true()"></xforms:setvalue>
+			</xforms:action>
 
 			<!-- **************** SUBMISSIONS ********************** -->
 			<xforms:submission id="validate-token"
@@ -63,6 +121,16 @@
 				instance="academia-response" replace="instance">
 				<xforms:message ev:event="xforms-submit-error" level="modal">Error in receiving
 					well-formed XML response from PHP script.</xforms:message>
+				<xforms:action ev:event="xforms-submit-done">
+					<!-- iterate through all records, setting publication_date if valid xs:date -->
+					<xforms:action xxforms:iterate="instance('academia-response')//record">
+						<xforms:var name="publication_date" select="concat(publication_year, '-', format-number(number(publication_month), '00'), '-', format-number(number(publication_day), '00'))"/>
+						<xforms:setvalue ref="publication_date" value="$publication_date" if="$publication_date castable as xs:date"/>
+					</xforms:action>
+					
+					<xforms:toggle case="academia-error" if="instance('academia-response')/error"/>
+					<xforms:toggle case="academia-record-list" if="count(instance('academia-response')//records) &gt; 0"/>
+				</xforms:action>
 			</xforms:submission>
 		</xforms:model>
 	</head>
@@ -73,45 +141,265 @@
 				<div class="col-md-12">
 					<h1>Academia Migrate</h1>
 					<xforms:switch>
+						
+						<!-- Step 2: Parse and validate Academia.edu publication metadata -->
 						<xforms:case id="academia-records">
 							<xforms:group ref="instance('academia-response')">
-								<xforms:group ref=".[child::*]">
-									<xforms:group ref=".[count(descendant::record) &gt; 0]">
-										<h3>Records</h3>
-										<table class="table">
-											<xforms:repeat nodeset="descendant::record">
-												<tr>
-													<td>
-														<xforms:input ref="@migrate"/>
-													</td>
-													<td>
-														<h4><xforms:output ref="title"/></h4>
-													</td>
-												</tr>
-											</xforms:repeat>
-										</table>
-										
-									</xforms:group>
-									<xforms:group ref=".[child::error]">
+
+								<!-- switch for different interfaces of the academia response phase -->
+								<xforms:switch>
+									<xforms:case id="academia-get-records">
+										<div>
+											<xforms:input ref="instance('control-instance')/academia_uri">
+												<xforms:label>Profile URL</xforms:label>
+												<xforms:alert>URL doesn't match expression for an Academia.edu
+													profile</xforms:alert>
+											</xforms:input>
+											<xforms:trigger>
+												<xforms:label>Get Records</xforms:label>
+												<xforms:action ev:event="DOMActivate">
+													<xforms:send submission="get-records"></xforms:send>
+												</xforms:action>
+											</xforms:trigger>
+										</div>
+									</xforms:case>
+									<xforms:case id="academia-error">
 										<h3>Error</h3>
 										<p><xforms:output ref="error"/></p>
-									</xforms:group>
-								</xforms:group>
-								<xforms:group ref=".[not(child::*)]">
-									<div>
-										<xforms:input ref="instance('control-instance')/academia_uri">
-											<xforms:label>Profile URL</xforms:label>
-											<xforms:alert>URL doesn't match expression for an Academia.edu
-												profile</xforms:alert>
-										</xforms:input>
-										<xforms:trigger>
-											<xforms:label>Get Records</xforms:label>
-											<xforms:action ev:event="DOMActivate">
-												<xforms:send submission="get-records"></xforms:send>
-											</xforms:action>
+									</xforms:case>
+									<xforms:case id="academia-record-list">
+										<h3>Records</h3>
+										<table class="table">
+											<thead>
+												<tr>
+													<th>Migrate</th>
+													<th>Record</th>
+												</tr>
+											</thead>
+											<tbody>
+												<xforms:repeat nodeset="descendant::record">
+													<xforms:var name="position" select="position()"/>
+													
+													<tr>
+														<td>
+															<xforms:input ref="@migrate"/>
+														</td>
+														<td>
+															<h4>
+																<a href="{url}" target="_blank" title="{url}">
+																	<xforms:output ref="title"/>
+																</a>
+															</h4>
+															<div class="trigger-container">
+																<xforms:group ref=".[publication_type='article' and not(child::journal_title)]">
+																	<xforms:trigger appearance="minimal">
+																		<xforms:label>
+																			<span class="glyphicon glyphicon-plus"></span>Journal Title</xforms:label>
+																		<xforms:action ev:event="DOMActivate">
+																			<xforms:insert origin="xforms:element('journal_title', '')" context="." nodeset="./child::node()[last()]"></xforms:insert>
+																			<xforms:insert origin="xforms:element('journal_volume', '')" context="." nodeset="./child::node()[last()]"></xforms:insert>
+																			<xforms:insert origin="xforms:element('journal_issue', '')" context="." nodeset="./child::node()[last()]"></xforms:insert>
+																			<xforms:insert origin="xforms:element('journal_pagse', '')" context="." nodeset="./child::node()[last()]"></xforms:insert>
+																		</xforms:action>
+																	</xforms:trigger>
+																</xforms:group>
+																<xforms:group ref=".[publication_type='conferencepaper' and not(child::conference_title)]">
+																	<xforms:trigger appearance="minimal">
+																		<xforms:label>
+																			<span class="glyphicon glyphicon-plus"></span>Conference Information</xforms:label>
+																		<xforms:action ev:event="DOMActivate">
+																			<xforms:insert origin="xforms:element('conference_title', '')" context="." nodeset="./child::node()[last()]"></xforms:insert>
+																			<xforms:insert origin="xforms:element('conference_dates', '')" context="." nodeset="./child::node()[last()]"></xforms:insert>
+																			<xforms:insert origin="xforms:element('conference_place', '')" context="." nodeset="./child::node()[last()]"></xforms:insert>
+																		</xforms:action>
+																	</xforms:trigger>
+																</xforms:group>
+																<xforms:group ref=".[publication_type='thesis' and not(child::thesis_university)]">
+																	<xforms:trigger appearance="minimal">
+																		<xforms:label>
+																			<span class="glyphicon glyphicon-plus"></span>Thesis University</xforms:label>
+																		<xforms:action ev:event="DOMActivate">
+																			<xforms:insert origin="xforms:element('thesis_university', '')" context="." nodeset="./child::node()[last()]"></xforms:insert>
+																		</xforms:action>
+																	</xforms:trigger>
+																</xforms:group>
+																<xforms:group ref=".[publication_type='section' and not(child::partof_title)]">
+																	<xforms:trigger appearance="minimal">
+																		<xforms:label>
+																			<span class="glyphicon glyphicon-plus"></span>Book TItle</xforms:label>
+																		<xforms:action ev:event="DOMActivate">
+																			<xforms:insert origin="xforms:element('partof_title', '')" context="." nodeset="./child::node()[last()]"></xforms:insert>
+																		</xforms:action>
+																	</xforms:trigger>
+																</xforms:group>
+															</div>
+															<div>
+																<xforms:output ref="access_right">
+																	<xforms:label>Access Right</xforms:label>
+																</xforms:output>
+															</div>
+															<div>
+																<xforms:select1 ref="license">
+																	<xforms:label>License</xforms:label>
+																	<xforms:itemset nodeset="instance('licenses')/license">
+																		<xforms:label ref="."></xforms:label>
+																		<xforms:value ref="@id"></xforms:value>
+																	</xforms:itemset>
+																</xforms:select1>
+															</div>
+															<div>
+																<xforms:select1 ref="upload_type">
+																	<xforms:label>Upload Type</xforms:label>
+																	<xforms:itemset nodeset="instance('upload_types')/upload_type">
+																		<xforms:label ref="."></xforms:label>
+																		<xforms:value ref="."></xforms:value>
+																	</xforms:itemset>
+																	
+																	<!-- add/remove publication_type if the upload_type is/is not 'publication' -->
+																	<xforms:action ev:event="xforms-value-changed">
+																		<xforms:var name="val" select="."/>
+																		
+																		<xforms:action if="$val = 'publication'">
+																			<xforms:insert context="instance('academia-response')//record[position()=$position]" nodeset="./child::node()[last()]" origin="xforms:element('publication_type', 'article')" if="not(publication_type)"/>
+																		</xforms:action>
+																		<xforms:action if="not($val = 'publication')">
+																			<xforms:delete nodeset="../publication_type"/>
+																		</xforms:action>
+																	</xforms:action>
+																</xforms:select1>
+															</div>
+															<xforms:group ref="publication_type">
+																<div>
+																	<xforms:select1 ref=".">
+																		<xforms:label>Publication Type</xforms:label>
+																		<xforms:itemset nodeset="instance('publication_types')/publication_type">
+																			<xforms:label ref="."></xforms:label>
+																			<xforms:value ref="."></xforms:value>
+																		</xforms:itemset>
+																	</xforms:select1>
+																</div>
+															</xforms:group>
+															<xforms:input ref="publication_date">
+																<xforms:label>Publication Date</xforms:label>
+																<xforms:alert>Required</xforms:alert>
+															</xforms:input>
+															
+															<!-- conference information -->
+															<xforms:group ref="conference_title">
+																<h4>Conference Information</h4>
+																<div>
+																	<xforms:input ref=".">
+																		<xforms:label>Conference Title</xforms:label>
+																		<xforms:alert>Required</xforms:alert>
+																	</xforms:input>
+																	<xforms:trigger appearance="minimal">
+																		<xforms:action ev:event="DOMActivate">
+																			<xforms:delete nodeset="../conference_dates"></xforms:delete>
+																			<xforms:delete nodeset="../conference_place"></xforms:delete>
+																			<xforms:delete context="."></xforms:delete>
+																		</xforms:action>
+																		<xforms:label>
+																			<span class="glyphicon glyphicon-remove"></span>
+																		</xforms:label>
+																	</xforms:trigger>
+																</div>
+															</xforms:group>
+															<xforms:group ref="conference_dates">
+																<div>
+																	<xforms:input ref=".">
+																		<xforms:label>Conference Dates</xforms:label>
+																		<xforms:alert>Required</xforms:alert>
+																	</xforms:input>
+																</div>
+															</xforms:group>
+															<xforms:group ref="conference_place">
+																<div>
+																	<xforms:input ref=".">
+																		<xforms:label>Conference Place</xforms:label>
+																		<xforms:alert>Required</xforms:alert>
+																	</xforms:input>
+																</div>
+															</xforms:group>
+															
+															<!-- journal information -->
+															<xforms:group ref="journal_title">
+																<h4>Journal Information</h4>
+																<div>
+																	<xforms:input ref=".">
+																		<xforms:label>Journal Title</xforms:label>
+																		<xforms:alert>Required</xforms:alert>
+																	</xforms:input>
+																	<xforms:trigger appearance="minimal">
+																		<xforms:action ev:event="DOMActivate">
+																			<xforms:delete context="."></xforms:delete>
+																		</xforms:action>
+																		<xforms:label>
+																			<span class="glyphicon glyphicon-remove"></span>
+																		</xforms:label>
+																	</xforms:trigger>
+																</div>
+															</xforms:group>
+															<xforms:group ref="journal_volume">
+																<div>
+																	<xforms:input ref=".">
+																		<xforms:label>Journal Volume</xforms:label>
+																	</xforms:input>
+																</div>
+															</xforms:group>
+															<xforms:group ref="journal_issue">
+																<div>
+																	<xforms:input ref=".">
+																		<xforms:label>Journal Issue</xforms:label>																		
+																	</xforms:input>
+																</div>
+															</xforms:group>
+															<xforms:group ref="journal_pages">
+																<div>
+																	<xforms:input ref=".">
+																		<xforms:label>Journal Pages</xforms:label>
+																	</xforms:input>
+																</div>
+															</xforms:group>
+															<xforms:group ref="thesis_university">
+																<div>
+																	<xforms:input ref=".">
+																		<xforms:label>Thesis University</xforms:label>
+																		<xforms:alert>Required</xforms:alert>
+																	</xforms:input>
+																</div>
+															</xforms:group>
+															<xforms:group ref="partof_title">
+																<div>
+																	<xforms:input ref=".">
+																		<xforms:label>Book Title</xforms:label>
+																		<xforms:alert>Required</xforms:alert>
+																	</xforms:input>
+																</div>
+															</xforms:group>
+															
+															<xforms:group ref="keywords">
+																<h4>Keywords</h4>
+																<xforms:repeat nodeset="keyword">
+																	<xforms:input ref="."/>
+																	<xforms:trigger appearance="minimal">
+																		<xforms:action ev:event="DOMActivate">
+																			<xforms:delete context="."></xforms:delete>
+																		</xforms:action>
+																		<xforms:label><span class="glyphicon glyphicon-remove"></span></xforms:label>
+																	</xforms:trigger>
+																</xforms:repeat>
+															</xforms:group>
+														</td>
+													</tr>
+												</xforms:repeat>
+											</tbody>											
+										</table>
+										
+										<xforms:trigger bind="upload-trigger">
+											<xforms:label>Upload</xforms:label>
 										</xforms:trigger>
-									</div>
-								</xforms:group>
+									</xforms:case>
+								</xforms:switch>
 							</xforms:group>
 						</xforms:case>
 						<xforms:case id="authenticate-zenodo">

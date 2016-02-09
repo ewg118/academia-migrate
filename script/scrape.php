@@ -53,6 +53,7 @@ if (preg_match('/https:\/\/[a-z]+\.academia.edu\/[A-Za-z]+/', $uri)){
 function process_html($output, $writer) {
 	//get creator metadata
 	preg_match('/c\.User\.set_viewed\((.*)\);\n/', $output, $matches);
+	$ids = array();
 
 	if (isset($matches[1])){
 		$user = json_decode(trim($matches[1]));
@@ -75,10 +76,13 @@ function process_html($output, $writer) {
 				$obj = json_decode(trim($work));
 	
 				//only gather those papers where the owner_id is the current user id.
-				if ($obj->owner_id == $userId) {
+				if ($obj->owner_id == $userId && !in_array($obj->id, $ids)) {
 					//only process papers, etc. that have associated document/presentation files
-					if ($obj->attachments) {
-	
+					if ($obj->attachments) {						
+						//add id into array of ids to prevent processing of duplicates in a page
+						$ids[] = $obj->id;
+						
+						//begin record metadata
 						$writer->startElement('record');
 							
 						//by default, set migrate to boolean(true) to enable file upload and document migration
@@ -116,24 +120,29 @@ function process_html($output, $writer) {
 						if (isset($metadata->abstract)){
 							$writer->writeElement('abstract', $metadata->abstract);
 						}
-						if (isset($metadata->publication_name)){
+						/*if (isset($metadata->publication_name)){
 							$writer->writeElement('publication_name', $metadata->publication_name);
-						}
+						}*/
 	
 						//publication date is mandatory
 						if (isset($metadata->publication_date)){
 							foreach ($metadata->publication_date as $k=>$v){
-								if (is_string($v) && $v != 'errors'){
-									$writer->writeElement('publication_' . $k, $v);
-								} else {
-									$writer->writeElement('publication_' . $k, '');
-								}
+								if ($k != 'errors'){
+									if (is_int($v)){
+										$writer->writeElement('publication_' . $k, $v);
+									} else {
+										$writer->writeElement('publication_' . $k, '');
+									}
+								}								
 							}
 						} else {
 							$writer->writeElement('publication_day');
 							$writer->writeElement('publication_month');
 							$writer->writeElement('publication_year');
 						}
+						
+						//write empty publication_date element, to be manipulated in the XForms engine
+						$writer->writeElement('publication_date');
 	
 						if (isset($metadata->conference_start_date) || isset($metadata->conference_end_date)){
 							$date = '';
@@ -171,6 +180,8 @@ function process_html($output, $writer) {
 						if (!isset($metadata->conference_start_date) && !isset($metadata->conference_end_date)){
 							if (isset($metadata->journal_name)){
 								$writer->writeElement('journal_title', $metadata->journal_name);
+							} else if (isset($metadata->publication_name)){
+								$writer->writeElement('journal_title', $metadata->publication_name);
 							}
 						}
 	
@@ -193,11 +204,21 @@ function process_html($output, $writer) {
 								$writer->endElement();
 							}
 						}
+						
+						//end creators
 						$writer->endElement();
 	
+						//keywords
+						if ($obj->research_interests){
+							$writer->startElement('keywords');
+							foreach ($obj->research_interests as $keyword){
+								$writer->writeElement('keyword', $keyword->name);
+							}
+							$writer->endElement();
+						}
+						
+						//end individual record
 						$writer->endElement();
-	
-						//var_dump($obj);
 					}
 				}
 				$count++;
@@ -210,6 +231,8 @@ function process_html($output, $writer) {
 	
 		//end response
 		$writer->endElement();
+		
+		//var_dump($obj);
 	} else {
 		$writer->startElement('response');
 			$writer->writeElement('error', 'Unable to parse creator metadata to extract user id.');
