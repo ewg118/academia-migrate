@@ -16,6 +16,10 @@
 
 	<page path="/academia-migrate/" view="migrate.xhtml"/>
 	<page path="/academia-migrate/records" view="xpl/scrape.xpl"/>
+	<!--<page path="/academia-migrate/accept" view="xpl/post.xpl"/>-->
+	
+	
+	<page path="/academia-migrate/test-json" model="xpl/scrape.xpl" view="xpl/post.xpl"/>
 	
 	<epilogue url="oxf:/config/epilogue.xpl"/>
 </config>

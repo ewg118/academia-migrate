@@ -119,7 +119,7 @@ function process_html($output, $writer) {
 						}
 	
 						if (isset($metadata->abstract)){
-							$writer->writeElement('abstract', $metadata->abstract);
+							$writer->writeElement('description', preg_replace( "/\r|\n/", "", $metadata->abstract));
 						}
 						/*if (isset($metadata->publication_name)){
 							$writer->writeElement('publication_name', $metadata->publication_name);

@@ -5,11 +5,10 @@
 
 	<p:param type="input" name="data"/>
 	<p:param type="output" name="data"/>
-
-
-	<p:processor name="oxf:unsafe-xslt">
-		<p:input name="params" href="#params"/>				
-		<p:input name="data" href="aggregate('content', #data, #config)"/>		
+	
+	<!-- create deposition -->
+	<p:processor name="oxf:unsafe-xslt">			
+		<p:input name="data" href="#data"/>		
 		<p:input name="config" href="../xslt/xml-to-json.xsl"/>
 		<p:output name="data" id="model"/>
 	</p:processor>	

@@ -21,6 +21,7 @@
 					<zenodo_access_token></zenodo_access_token>
 					<academia_uri>https://numismatics.academia.edu/EthanGruber</academia_uri>
 					<upload-trigger>false</upload-trigger>
+					<status/>
 				</controls>
 			</xforms:instance>
 
@@ -31,6 +32,15 @@
 
 			<xforms:instance id="academia-response">
 				<response xmlns=""></response>
+			</xforms:instance>
+			
+			<xforms:instance id="record">
+				<record xmlns=""></record>
+			</xforms:instance>
+			
+			<!-- JSON wrappers -->
+			<xforms:instance id="zenodo-deposition-json">
+				<json xmlns=""/>
 			</xforms:instance>
 			
 			<!-- list instances -->
@@ -107,12 +117,24 @@
 			</xforms:action>
 
 			<!-- **************** SUBMISSIONS ********************** -->
+			
+			<!-- Zenodo API -->
 			<xforms:submission id="validate-token"
 				resource="https://zenodo.org/api/deposit/depositions/?access_token={instance('control-instance')/zenodo_access_token}"
 				ref="instance('zenodo-response')" replace="instance" method="get"
 				mediatype="application/json">
 				<xforms:message ev:event="xforms-submit-error" level="modal">Unable to get response
 					from Zenodo.</xforms:message>
+			</xforms:submission>
+			
+			<xforms:submission id="create-deposition" action="https://sandbox.zenodo.org/api/deposit/depositions/?access_token={instance('control-instance')/zenodo_access_token}" ref="instance('zenodo-deposition-json')" serialization="application/json" replace="none" method="post"
+				mediatype="application/json">
+				<xforms:action ev:event="xforms-submit-error">
+					<xforms:message level="modal">Zenodo POST failed.</xforms:message>
+				</xforms:action>
+				<!--<xforms:action ev:event="xforms-submit-done">
+					
+				</xforms:action>-->
 			</xforms:submission>
 
 			<!-- get response from PHP submission -->
@@ -284,7 +306,7 @@
 																<xforms:alert>Required</xforms:alert>
 															</xforms:input>
 															
-															<xforms:group ref="abstract">
+															<xforms:group ref="description">
 																<div>
 																	<xforms:output ref=".">
 																		<xforms:label>Abstract</xforms:label>
@@ -403,8 +425,23 @@
 											</tbody>											
 										</table>
 										
-										<xforms:trigger bind="upload-trigger">
+										<!-- bind="upload-trigger"-->
+										<xforms:trigger >
 											<xforms:label>Upload</xforms:label>
+											<xforms:action ev:event="DOMActivate">
+												<xforms:action xxforms:iterate="instance('academia-response')//record[@migrate=true()][1]">
+													<xforms:insert origin="context()" nodeset="instance('record')"/>
+													
+													<!-- transform into Zenodo API deposition JSON model -->
+													<xforms:insert nodeset="instance('zenodo-deposition-json')"
+														origin="xxforms:call-xpl('oxf:/apps/academia-migrate/xpl/xml-to-json.xpl', 'data', instance('record'), 'data')"></xforms:insert>
+												
+													<!-- post deposition -->
+													<xforms:send submission="create-deposition"/>
+												
+												</xforms:action>
+												
+											</xforms:action>
 										</xforms:trigger>
 									</xforms:case>
 								</xforms:switch>
@@ -426,6 +463,6 @@
 				</div>
 			</div>
 		</div>
-		<!--<fr:xforms-inspector></fr:xforms-inspector>-->
+		<fr:xforms-inspector></fr:xforms-inspector>
 	</body>
 </html>
