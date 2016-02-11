@@ -1,90 +1,92 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
 	xmlns:xs="http://www.w3.org/2001/XMLSchema" exclude-result-prefixes="#all" version="2.0">
-	<xsl:output method="text" encoding="UTF-8"/>
 	<xsl:strip-space elements="*"/>
+	<xsl:output indent="yes"></xsl:output>
 
 	<xsl:template match="/">
-		<xsl:variable name="json">
-			<xsl:if test="descendant::records">[</xsl:if>
-			<xsl:for-each select="descendant-or-self::record">
-				<xsl:text>{"metadata":{</xsl:text>
-				<xsl:apply-templates/>
-				<xsl:text>}}</xsl:text>
-				<xsl:if test="not(position()=last())">
-					<xsl:text>,</xsl:text>
-				</xsl:if>
-			</xsl:for-each>
-			<xsl:if test="descendant::records">]</xsl:if>
+		<xsl:choose>
+			<xsl:when test="descendant::records">
+				<json type="array">
+					<xsl:apply-templates select="descendant::record"/>
+				</json>
+			</xsl:when>
+			<xsl:otherwise>
+				<xsl:apply-templates select="/record"/>
+			</xsl:otherwise>
+		</xsl:choose>
+	</xsl:template>
+
+	<xsl:template match="record">
+		
+		<!-- set element name -->
+		<xsl:variable name="element">
+			<xsl:choose>
+				<xsl:when test="parent::records">_</xsl:when>
+				<xsl:otherwise>json</xsl:otherwise>
+			</xsl:choose>
 		</xsl:variable>
 		
-		<xsl:value-of select="$json"/>
 		
+		<xsl:element name="{$element}">
+			<xsl:attribute name="type">object</xsl:attribute>
+			<metadata type="object">
+				<xsl:apply-templates/>
+			</metadata>
+		</xsl:element>
 	</xsl:template>
 
 	<xsl:template match="keywords[keyword]">
-		<xsl:text>"keywords":[</xsl:text>
-		<xsl:for-each select="keyword[string-length(.) &gt; 0]">
-			<xsl:text>"</xsl:text>
-			<xsl:value-of select="."/>
-			<xsl:text>"</xsl:text>
-			<xsl:if test="not(position()=last())">
-				<xsl:text>,</xsl:text>
-			</xsl:if>
-		</xsl:for-each>
-		<xsl:text>]</xsl:text>
+		<keywords type="array">
+			<xsl:for-each select="keyword[string-length(.) &gt; 0]">
+				<_>
+					<xsl:value-of select="."/>
+				</_>
+			</xsl:for-each>
+		</keywords>
 	</xsl:template>
-	
+
 	<xsl:template match="creators">
-		<xsl:text>"creators":[</xsl:text>
-		<xsl:for-each select="creator">
-			<xsl:text>{"name":"</xsl:text>
-			<xsl:value-of select="."/>
-			<xsl:text>"</xsl:text>
-			<xsl:if test="@affiliation">
-				<xsl:text>,"affiliation":"</xsl:text>
-				<xsl:value-of select="@affiliation"/>
-				<xsl:text>"</xsl:text>
-			</xsl:if>
-			<xsl:text>}</xsl:text>
-			<xsl:if test="not(position()=last())">
-				<xsl:text>,</xsl:text>
-			</xsl:if>
-		</xsl:for-each>
-		<xsl:text>]</xsl:text>
-		<xsl:if test="following-sibling::*">
-			<xsl:text>,</xsl:text>
-		</xsl:if>
+		<creators type="array">
+			<xsl:for-each select="creator">
+				<_ type="object">
+					<name>
+						<xsl:value-of select="."/>
+					</name>
+					<xsl:if test="@affiliation">
+						<affiliation>
+							<xsl:value-of select="@affiliation"/>
+						</affiliation>
+					</xsl:if>
+				</_>
+			</xsl:for-each>
+		</creators>
 	</xsl:template>
-	
+
 	<!-- recast url as identifier -->
 	<!--<xsl:template match="url">
 		<xsl:text>"related_identifiers":[{"relation":"isAlternateIdentifier","identifier":"</xsl:text>
 		<xsl:value-of select="."/>
 		<xsl:text>"}],</xsl:text>
 	</xsl:template>-->
-	
+
 	<!-- ignore the following -->
-	<xsl:template match="id|publication_day|publication_month|publication_year|url"/>
-	
+	<xsl:template match="id|publication_day|publication_month|publication_year|url|file"/>
+
 	<!-- call templates for simple elements, ignoring some from initial scrape model -->
-	<xsl:template match="*[not(self::id|self::url|self::publication_day|self::publication_month|self::publication_year)][not(child::*)]">
+	<xsl:template
+		match="*[not(self::id|self::url|self::publication_day|self::publication_month|self::publication_year|self::file)][not(child::*)][string-length(.) &gt; 0]">
 		<xsl:variable name="val" select="replace(., '&#x022;', '\\&#x022;')"/>
-		
-		<xsl:text>"</xsl:text>
-		<xsl:value-of select="name()"/>
-		<xsl:text>":</xsl:text>
-		<xsl:choose>
-			<xsl:when test=". castable as xs:integer"><xsl:value-of select="."/></xsl:when>
-			<xsl:otherwise>
-				<xsl:text>"</xsl:text>
-				<xsl:value-of select="$val	"/>
-				<xsl:text>"</xsl:text>
-			</xsl:otherwise>
-		</xsl:choose>
-		
-		<xsl:if test="not(position()=last())">
-			<xsl:text>,</xsl:text>
-		</xsl:if>
+
+		<xsl:element name="{name()}">
+			<xsl:choose>
+				<xsl:when test=". castable as xs:integer">
+					<xsl:value-of select="."/>
+				</xsl:when>
+				<xsl:otherwise>
+					<xsl:value-of select="$val"/>
+				</xsl:otherwise>
+			</xsl:choose>
+		</xsl:element>
 	</xsl:template>
 </xsl:stylesheet>

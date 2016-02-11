@@ -65,7 +65,8 @@ function process_html($output, $writer) {
 		preg_match_all('/workJSON:(.*)\n/', $output, $works);
 	
 		$count = 0;
-		$writer->startElement('response');
+		$writer->startElement('response');		
+		$writer->writeAttribute('xmlns:xsi', 'http://www.w3.org/2001/XMLSchema-instance');
 		$writer->writeElement('id', $userId);
 		$writer->writeElement('name', $userName);
 		$writer->writeElement('url', $url);
@@ -217,6 +218,14 @@ function process_html($output, $writer) {
 							}
 							$writer->endElement();
 						}
+						
+						//create file element
+						$writer->startElement('file');
+							$writer->writeAttribute('xsi:type', 'xs:anyURI');
+							$writer->writeAttribute('filename', '');
+							$writer->writeAttribute('mediatype', '');
+							$writer->writeAttribute('size');
+						$writer->endElement();
 						
 						//end individual record
 						$writer->endElement();
