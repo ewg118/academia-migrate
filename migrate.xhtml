@@ -281,6 +281,10 @@
 							and so there needs to be an intermediate step in which Academia users re-upload their files into this system for posting via API into Zenodo. Upon completion of the migration process,
 							these uploaded files will be deleted from this server.</p>
 							
+							<p>The code is open source at <a href="https://github.com/ewg118/academia-migrate">https://github.com/ewg118/academia-migrate</a>. 
+								It relies on a PHP script for scraping metadata from Academia.edu and posting files at <code>multipart/form-data</code>. The remaining interactions
+							are handled in <a href="http://www.orbeon.com">Orbeon</a>, an XForms processor.</p>
+							
 							<h3>Prerequesites</h3>
 							<ol>
 								<li>An Academia.edu profile.</li>
