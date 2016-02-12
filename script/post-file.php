@@ -10,14 +10,12 @@
 //set output header
 header('Content-Type: application/json');
 
-//set the environment
-$env = 'dev';
-
 //the line below is for passing request parameters from the command line.
 //parse_str(implode('&', array_slice($argv, 1)), $_GET);
 $name = $_GET['name'];
 $file = $_GET['file'];
 $depositionId = $_GET['id'];
+$env = $_GET['env'];
 $zenodoAccessToken = $_GET['access_token'];
 
 //set necessary curl variables
