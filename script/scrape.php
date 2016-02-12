@@ -119,12 +119,12 @@ function process_html($output, $writer) {
 								}
 						}
 	
+						//description is mandator, extract from academia abstract when possible, otherwise create blank element
 						if (isset($metadata->abstract)){
 							$writer->writeElement('description', preg_replace( "/\r|\n/", "", $metadata->abstract));
+						} else {
+							$writer->writeElement('description');
 						}
-						/*if (isset($metadata->publication_name)){
-							$writer->writeElement('publication_name', $metadata->publication_name);
-						}*/
 	
 						//publication date is mandatory
 						if (isset($metadata->publication_date)){
@@ -145,6 +145,7 @@ function process_html($output, $writer) {
 						
 						//write empty publication_date element, to be manipulated in the XForms engine
 						$writer->writeElement('publication_date');
+						$writer->writeElement('publication_date_valid', 'false');
 	
 						if (isset($metadata->conference_start_date) || isset($metadata->conference_end_date)){
 							$date = '';

@@ -19,15 +19,21 @@
 			<xforms:instance id="control-instance" xxforms:exclude-result-prefixes="#all">
 				<controls xmlns="">
 					<zenodo_api_url></zenodo_api_url>
-					<zenodo_access_token>i5LMWXGOCuwJBBMg7IklIHmsguaOgg6emF94lN0pzMMenZKqVVnJsNFiITdf</zenodo_access_token>
+					<zenodo_access_token></zenodo_access_token>
 					<token-valid>false</token-valid>
-					<academia_uri>https://numismatics.academia.edu/EthanGruber</academia_uri>
+					<academia_uri></academia_uri>
 					<upload-trigger>false</upload-trigger>
 					<deposition-id/>
 					<file-name/>
 					<file-path/>
+					<last>false</last>
+					<errors>false</errors>
 					<status/>
 				</controls>
+			</xforms:instance>
+			
+			<xforms:instance id="published" xxforms:exclude-result-prefixes="#all">
+				<published xmlns=""/>
 			</xforms:instance>
 			
 			<xforms:instance id="config">
@@ -126,13 +132,22 @@
 					constraint="matches(., 'https://[a-z]+\.academia\.edu/[A-Za-z]+')"></xforms:bind>
 				<xforms:bind id="upload-trigger" nodeset="upload-trigger" type="xs:boolean" readonly=". != true()"></xforms:bind>
 				<xforms:bind id="validate-trigger" nodeset="token-valid" type="xs:boolean" readonly=". = true()"/>
+				<xforms:bind nodeset="last" type="xs:boolean"/>
+				<xforms:bind nodeset="errors" type="xs:boolean"/>
 			</xforms:bind>
 			
 			<xforms:bind nodeset="instance('academia-response')">
 				<xforms:bind nodeset="records">
 					<xforms:bind nodeset="record">
 						<xforms:bind nodeset="@migrate" type="xs:boolean"/>
-						<xforms:bind nodeset="publication_date" required="../@migrate=true()" constraint=". castable as xs:date"/>
+						<xforms:bind nodeset="publication_date" constraint="if (../@migrate=true()) then(../publication_date_valid = true()) else (../publication_date_valid = true() or ../publication_date_valid = false())"/>
+						<xforms:bind nodeset="publication_date_valid" type="xs:boolean"/>
+						<xforms:bind nodeset="creators">
+							<xforms:bind nodeset="creator" required="ancestor::record/@migrate=true()">
+								<xforms:bind nodeset="@affiliation" required="ancestor::record/@migrate=true()"/>
+							</xforms:bind>
+						</xforms:bind>
+						<xforms:bind nodeset="description" required="../@migrate=true()"/>
 						<xforms:bind nodeset="partof_title" required="../publication_type='section'" relevant="../publication_type='section'"/>
 						<xforms:bind nodeset="journal_title" required="../publication_type='article'" relevant="../publication_type='article'"/>
 						<xforms:bind nodeset="journal_volume" relevant="../publication_type='article'"/>
@@ -145,8 +160,7 @@
 						<xforms:bind nodeset="file" id="upload-control" required="../@migrate=true()" readonly="../@migrate=false()"/>
 					</xforms:bind>
 				</xforms:bind>
-			</xforms:bind>
-			
+			</xforms:bind>			
 			
 			<!-- **************** DYNAMIC VALIDATION CONTROLS ********************** -->
 			<xforms:action ev:event="xxforms-invalid" ev:observer="academia-response">
@@ -163,8 +177,12 @@
 			<xforms:submission id="validate-token"
 				resource="{instance('control-instance')/zenodo_api_url}deposit/depositions/?access_token={instance('control-instance')/zenodo_access_token}" 
 				replace="instance" instance="zenodo-response" method="get">
-				<xforms:message ev:event="xforms-submit-error" level="modal">Unable to get response
-					from Zenodo (incorrect access token?).</xforms:message>
+				<xforms:action ev:event="xforms-submit-error">
+					<xforms:message level="modal">Unable to get response
+						from Zenodo (incorrect access token?).</xforms:message>
+					<xforms:setvalue ref="instance('control-instance')/errors" value="true()"/>
+				</xforms:action>
+				
 				
 				<!-- if JSON is received, then proceed to next step -->
 				<xforms:setvalue ref="instance('control-instance')/token-valid" value="true()" ev:event="xforms-submit-done"/>
@@ -173,7 +191,8 @@
 			<xforms:submission id="create-deposition" action="{instance('control-instance')/zenodo_api_url}deposit/depositions/?access_token={instance('control-instance')/zenodo_access_token}" ref="instance('zenodo-deposition-json')" 
 				serialization="application/json" replace="instance" instance="zenodo-response" method="post">
 				<xforms:action ev:event="xforms-submit-error">
-					<xforms:message level="modal">Zenodo POST failed.</xforms:message>
+					<xforms:message level="modal">Error posting deposition to Zenodo: <xforms:output value="instance('record')/title"/></xforms:message>
+					<xforms:setvalue ref="instance('control-instance')/errors" value="true()"/>
 				</xforms:action>
 				<xforms:action ev:event="xforms-submit-done">
 					<!-- get the new deposition id, use it for attaching a file -->
@@ -186,15 +205,28 @@
 			<xforms:submission id="post-file" serialization="none" method="get"
 				action="/academia-migrate/post-file?name={instance('control-instance')/file-name}&amp;file={instance('control-instance')/file-path}&amp;id={instance('control-instance')/deposition-id}&amp;access_token={instance('control-instance')/zenodo_access_token}"
 				instance="zenodo-response" replace="instance">
-				<xforms:message ev:event="xforms-submit-error" level="modal">Error posting file.</xforms:message>
-				
+				<xforms:action ev:event="xforms-submit-error">
+					<xforms:message level="modal">Error posting file to Zenodo: <xforms:output value="instance('record')/title"/></xforms:message>
+					<xforms:setvalue ref="instance('control-instance')/errors" value="true()"/>
+				</xforms:action>
 				
 				<xforms:send submission="publish-deposition" ev:event="xforms-submit-done" if="instance('zenodo-response')/id"/>
 			</xforms:submission>
 			
 			<xforms:submission id="publish-deposition" action="{instance('control-instance')/zenodo_api_url}deposit/depositions/{instance('control-instance')/deposition-id}/actions/publish?access_token={instance('control-instance')/zenodo_access_token}" 
 				serialization="application/json" replace="instance" instance="zenodo-response" method="post">
-				<xforms:message ev:event="xforms-submit-error" level="modal">Error posting deposition.</xforms:message>
+				<xforms:action ev:event="xforms-submit-error">
+					<xforms:message level="modal">Error publishing deposition in Zenodo: <xforms:output value="instance('record')/title"/>.</xforms:message>
+					<xforms:setvalue ref="instance('control-instance')/errors" value="true()"/>
+				</xforms:action>
+				
+				<xforms:action ev:event="xforms-submit-done">
+					<xforms:setvalue ref="instance('control-instance')/status" if="instance('control-instance')/last=true()">Migration of content to Zenodo is complete.</xforms:setvalue>
+					<!-- create list of published records -->
+					<xforms:insert context="instance('published')" nodeset="child::node()[last()]" origin="xforms:element('record')"></xforms:insert>
+					<xforms:insert context="instance('published')/record[last()]" origin="xforms:element('title', instance('record')/title)"></xforms:insert>
+					<xforms:insert context="instance('published')/record[last()]" origin="xforms:element('url', instance('zenodo-response')/record_url)"></xforms:insert>
+				</xforms:action>
 			</xforms:submission>
 			
 			<!-- get response from PHP submission -->
@@ -208,6 +240,7 @@
 					<xforms:action xxforms:iterate="instance('academia-response')//record">
 						<xforms:var name="publication_date" select="concat(publication_year, '-', format-number(number(publication_month), '00'), '-', format-number(number(publication_day), '00'))"/>
 						<xforms:setvalue ref="publication_date" value="$publication_date" if="$publication_date castable as xs:date"/>
+						<xforms:setvalue ref="publication_date_valid" value="true()" if="$publication_date castable as xs:date"/>
 					</xforms:action>
 					
 					<xforms:toggle case="academia-error" if="instance('academia-response')/error"/>
@@ -215,7 +248,9 @@
 				</xforms:action>
 			</xforms:submission>
 			
+			<!-- **************** XFORMS-MODEL-CONSTRUCT-DONE ********************** -->
 			<xforms:action ev:event="xforms-model-construct-done">
+				<!-- set the Zenodo API URL based on environment config variable -->
 				<xforms:setvalue ref="instance('control-instance')/zenodo_api_url" value="if (instance('config')/env = 'dev') then 'https://sandbox.zenodo.org/api/' else 'https://zenodo.org/api/'"/>
 			</xforms:action>
 		</xforms:model>
@@ -224,11 +259,44 @@
 	<body>
 		<div class="container-fluid">
 			<div class="row">
-				<div class="col-md-12">
+				<div class="col-md-12" id="form">
+					<xforms:group ref=".[string-length(instance('control-instance')/status) &gt; 0]">
+						<div class="bg-info alert-box">
+							<span class="glyphicon glyphicon-info-sign"></span>
+							<strong>Status:</strong>
+							<xforms:output ref="instance('control-instance')/status"></xforms:output>
+						</div>
+					</xforms:group>
+					
 					<h1>Academia Migrate</h1>
 					<xforms:switch>
+						<xforms:case id="begin">
+							<h2>Background</h2>
+							<p>I developed this application to migrate scholarly publications from the pseudo-open Academia.edu into Zenodo.org, 
+								which is a truly open platform for the dissemination of research data and publications. Zenodo is developed by CERN and backed by EU funding. 
+							This application extracts publication metadata (with PHP) from an Academia.edu user profile and facilitates import of this metadata (if there are associated document files)
+							and re-upload of these document files into Zenodo.</p>
+							<p>Despite Academia.edu's (poor) terms of service, Google's recent victory over academic publishers has demonstrated
+							that metadata are not copyrightable, and can be freely harvested from the web. However, the document files cannot be harvested automatically (only authenticated users can download them),
+							and so there needs to be an intermediate step in which Academia users re-upload their files into this system for posting via API into Zenodo. Upon completion of the migration process,
+							these uploaded files will be deleted from this server.</p>
+							
+							<h3>Prerequesites</h3>
+							<ol>
+								<li>An Academia.edu profile.</li>
+								<li>A Zenodo.org account and activated access token (see next page).</li>
+							</ol>
+							
+							<h3>Note</h3>
+							<p>This application is in development mode, and so it only communicates with accounts on the Zenodo.org sandbox.</p>
+							
+							<xforms:trigger>
+								<xforms:label>Begin</xforms:label>
+								<xforms:toggle ev:event="DOMActivate" case="authenticate-zenodo"/>
+							</xforms:trigger>
+						</xforms:case> 
 						<xforms:case id="authenticate-zenodo">
-							<h2>Step 1: Validate Zenodo.org Access Token</h2>
+							<h2>Validate Zenodo.org Access Token</h2>
 							<p>After registering your Zenodo.org account, <a href="https://zenodo.org/dev#restapi-auth">request an access token</a>, 
 								and grant privileges for <code>deposit:write</code> and <code>deposit:actions</code>. At this time, we cannot support 
 								Zenodo's OAuth API as we cannot support HTTPS. However, your access token is not saved or transmitted in any way 
@@ -256,7 +324,8 @@
 						<!-- Step 2: Parse and validate Academia.edu publication metadata -->
 						<xforms:case id="academia-records">
 							<xforms:group ref="instance('academia-response')">
-								<h2>Select and Validate Academia.edu Records for Migration</h2>
+								<h2>Parse Academia.edu Data</h2>
+								<p>Copy and paste the URL for your Academia.edu profile in the input below and click "Get Record." E.g., <code>https://numismatics.academia.edu/EthanGruber</code></p>
 								<!-- switch for different interfaces of the academia response phase -->
 								<xforms:switch>
 									<xforms:case id="academia-get-records">
@@ -279,7 +348,18 @@
 										<p><xforms:output ref="error"/></p>
 									</xforms:case>
 									<xforms:case id="academia-record-list">
+										<xforms:group ref=".[count(//record[@migrate=true()]) = 0]">
+											<div class="bg-danger alert-box">
+												<span class="glyphicon glyphicon-exclamation-sign"></span>
+												<strong>Alert:</strong> No records have been selected for migration</div>
+										</xforms:group>
+										
 										<h3>Records</h3>
+										<p>The records shown below have associated document files on Academia. By default, all records are designated for migration, 
+											but you can uncheck the box to the left of each record to disable import. Any record designated for migration must have a new uploaded file, and exclamation points next to 
+										text inputs indicate required content. The publication date must be in ISO8601 (YYYY-MM-DD) format.</p>
+										<p>Since these metadata are parsed from the HTML page for your profile itself, I am uncertain how many publications will appear on the page. The record 
+										list therefore may be incomplete.</p>
 										<table class="table">
 											<thead>
 												<tr>
@@ -298,11 +378,12 @@
 														</td>
 														<td>
 															<h3>
-																<a href="{url}" target="_blank" title="{url}">
-																	<xforms:output ref="title"/>
-																</a>
+																<xforms:trigger appearance="minimal">
+																	<xforms:label value="title"/>
+																	<xforms:load show="new" resource="{url}" ev:event="DOMActivate"/>
+																</xforms:trigger>																
 															</h3>
-															<div class="trigger-container">
+															<div>
 																<xforms:group ref=".[publication_type='article' and not(child::journal_title)]">
 																	<xforms:trigger appearance="minimal">
 																		<xforms:label>
@@ -346,7 +427,7 @@
 																</xforms:group>
 															</div>
 															<div>
-																<xforms:output ref="access_right">
+																<xforms:output value="access_right">
 																	<xforms:label>Access Right</xforms:label>
 																</xforms:output>
 															</div>
@@ -391,96 +472,145 @@
 																	</xforms:select1>
 																</div>
 															</xforms:group>
-															<xforms:input ref="publication_date">
-																<xforms:label>Publication Date</xforms:label>
-																<xforms:alert>Required</xforms:alert>
-																<xforms:hint>ISO8601: YYYY-MM-DD</xforms:hint>
-															</xforms:input>
 															
-															<xforms:group ref="description">
-																<div>
-																	<xforms:output ref=".">
-																		<xforms:label>Abstract</xforms:label>
-																	</xforms:output>
-																</div>
-															</xforms:group>
+															<div>
+																<xforms:input ref="publication_date">
+																	<xforms:label>Publication Date</xforms:label>
+																	<xforms:alert>Required</xforms:alert>
+																	<xforms:hint>ISO8601: YYYY-MM-DD</xforms:hint>
+																	<xforms:action ev:event="xforms-value-changed">
+																		<xforms:setvalue ref="../publication_date_valid" value="true()" if="text() castable as xs:date"/>
+																		<xforms:setvalue ref="../publication_date_valid" value="false()" if="not(text() castable as xs:date)"/>
+																	</xforms:action>
+																</xforms:input>
+															</div>
+															
+															<div>
+																<xforms:textarea ref="description">
+																	<xforms:label>Abstract</xforms:label>
+																</xforms:textarea>
+															</div>
+															
+															<xforms:group ref="creators">
+																<div class="subjection">
+																	<h4>Creators</h4>
+																	<xforms:repeat nodeset="creator">
+																		<xforms:var name="position" select="position()"/>
+																		<div>
+																			<h5>Creator</h5>
+																			<!-- cannot delete the first entity, as this is the account owner -->
+																			<xforms:group ref=".[$position &gt; 1]">
+																				<xforms:trigger appearance="minimal">
+																					<xforms:delete context="." ev:event="DOMActivate"></xforms:delete>
+																					<xforms:label>
+																						<span class="glyphicon glyphicon-remove"></span>
+																					</xforms:label>
+																				</xforms:trigger>
+																			</xforms:group>
+																			
+																			<div>
+																				<xforms:input ref=".">
+																					<xforms:label>Name</xforms:label>
+																					<xforms:alert>Required</xforms:alert>
+																				</xforms:input>
+																			</div>
+																			<xforms:group ref="@affiliation">
+																				<div>
+																					<xforms:input ref=".">
+																						<xforms:label>Affiliation</xforms:label>
+																						<xforms:alert>Required</xforms:alert>
+																					</xforms:input>
+																				</div>
+																			</xforms:group>
+																		</div>																
+																	</xforms:repeat>
+																</div>																
+															</xforms:group>															
 															
 															<!-- conference information -->
 															<xforms:group ref="conference_title">
-																<h4>Conference Information</h4>
-																<div>
-																	<xforms:input ref=".">
-																		<xforms:label>Conference Title</xforms:label>
-																		<xforms:alert>Required</xforms:alert>
-																	</xforms:input>
-																	<xforms:trigger appearance="minimal">
-																		<xforms:action ev:event="DOMActivate">
-																			<xforms:delete nodeset="../conference_dates"></xforms:delete>
-																			<xforms:delete nodeset="../conference_place"></xforms:delete>
-																			<xforms:delete context="."></xforms:delete>
-																		</xforms:action>
-																		<xforms:label>
-																			<span class="glyphicon glyphicon-remove"></span>
-																		</xforms:label>
-																	</xforms:trigger>
+																<div class="subsection">
+																	<h4>Conference Information</h4>
+																	<div>
+																		<xforms:input ref=".">
+																			<xforms:label>Conference Title</xforms:label>
+																			<xforms:alert>Required</xforms:alert>
+																		</xforms:input>
+																		<xforms:trigger appearance="minimal">
+																			<xforms:action ev:event="DOMActivate">
+																				<xforms:delete nodeset="../conference_dates"></xforms:delete>
+																				<xforms:delete nodeset="../conference_place"></xforms:delete>
+																				<xforms:delete context="."></xforms:delete>
+																			</xforms:action>
+																			<xforms:label>
+																				<span class="glyphicon glyphicon-remove"></span>
+																			</xforms:label>
+																		</xforms:trigger>
+																	</div>
+																	<xforms:group ref="../conference_dates">
+																		<div>
+																			<xforms:input ref=".">
+																				<xforms:label>Conference Dates</xforms:label>
+																				<xforms:alert>Required</xforms:alert>
+																			</xforms:input>
+																		</div>
+																	</xforms:group>
+																	<xforms:group ref="../conference_place">
+																		<div>
+																			<xforms:input ref=".">
+																				<xforms:label>Conference Place</xforms:label>
+																				<xforms:alert>Required</xforms:alert>
+																			</xforms:input>
+																		</div>
+																	</xforms:group>
 																</div>
+																
 															</xforms:group>
-															<xforms:group ref="conference_dates">
-																<div>
-																	<xforms:input ref=".">
-																		<xforms:label>Conference Dates</xforms:label>
-																		<xforms:alert>Required</xforms:alert>
-																	</xforms:input>
-																</div>
-															</xforms:group>
-															<xforms:group ref="conference_place">
-																<div>
-																	<xforms:input ref=".">
-																		<xforms:label>Conference Place</xforms:label>
-																		<xforms:alert>Required</xforms:alert>
-																	</xforms:input>
-																</div>
-															</xforms:group>
+															
 															
 															<!-- journal information -->
 															<xforms:group ref="journal_title">
-																<h4>Journal Information</h4>
-																<div>
-																	<xforms:input ref=".">
-																		<xforms:label>Journal Title</xforms:label>
-																		<xforms:alert>Required</xforms:alert>
-																	</xforms:input>
-																	<xforms:trigger appearance="minimal">
-																		<xforms:action ev:event="DOMActivate">
-																			<xforms:delete context="."></xforms:delete>
-																		</xforms:action>
-																		<xforms:label>
-																			<span class="glyphicon glyphicon-remove"></span>
-																		</xforms:label>
-																	</xforms:trigger>
+																<div class="subsection">
+																	<h4>Journal Information</h4>
+																	<div>
+																		<xforms:input ref=".">
+																			<xforms:label>Journal Title</xforms:label>
+																			<xforms:alert>Required</xforms:alert>
+																		</xforms:input>
+																		<xforms:trigger appearance="minimal">
+																			<xforms:action ev:event="DOMActivate">
+																				<xforms:delete context="."></xforms:delete>
+																			</xforms:action>
+																			<xforms:label>
+																				<span class="glyphicon glyphicon-remove"></span>
+																			</xforms:label>
+																		</xforms:trigger>
+																	</div>
+																	<xforms:group ref="../journal_volume">
+																		<div>
+																			<xforms:input ref=".">
+																				<xforms:label>Journal Volume</xforms:label>
+																			</xforms:input>
+																		</div>
+																	</xforms:group>
+																	<xforms:group ref="../journal_issue">
+																		<div>
+																			<xforms:input ref=".">
+																				<xforms:label>Journal Issue</xforms:label>																		
+																			</xforms:input>
+																		</div>
+																	</xforms:group>
+																	<xforms:group ref="../journal_pages">
+																		<div>
+																			<xforms:input ref=".">
+																				<xforms:label>Journal Pages</xforms:label>
+																			</xforms:input>
+																		</div>
+																	</xforms:group>
 																</div>
+																
 															</xforms:group>
-															<xforms:group ref="journal_volume">
-																<div>
-																	<xforms:input ref=".">
-																		<xforms:label>Journal Volume</xforms:label>
-																	</xforms:input>
-																</div>
-															</xforms:group>
-															<xforms:group ref="journal_issue">
-																<div>
-																	<xforms:input ref=".">
-																		<xforms:label>Journal Issue</xforms:label>																		
-																	</xforms:input>
-																</div>
-															</xforms:group>
-															<xforms:group ref="journal_pages">
-																<div>
-																	<xforms:input ref=".">
-																		<xforms:label>Journal Pages</xforms:label>
-																	</xforms:input>
-																</div>
-															</xforms:group>
+															
 															<xforms:group ref="thesis_university">
 																<div>
 																	<xforms:input ref=".">
@@ -499,16 +629,20 @@
 															</xforms:group>
 															
 															<xforms:group ref="keywords">
-																<h4>Keywords</h4>
-																<xforms:repeat nodeset="keyword">
-																	<xforms:input ref="."/>
-																	<xforms:trigger appearance="minimal">
-																		<xforms:action ev:event="DOMActivate">
-																			<xforms:delete context="."></xforms:delete>
-																		</xforms:action>
-																		<xforms:label><span class="glyphicon glyphicon-remove"></span></xforms:label>
-																	</xforms:trigger>
-																</xforms:repeat>
+																<div class="subsection">
+																	<h4>Keywords</h4>
+																	<div>
+																		<xforms:repeat nodeset="keyword">
+																			<xforms:input ref="."/>
+																			<xforms:trigger appearance="minimal">
+																				<xforms:action ev:event="DOMActivate">
+																					<xforms:delete context="."></xforms:delete>
+																				</xforms:action>
+																				<xforms:label><span class="glyphicon glyphicon-remove"></span></xforms:label>
+																			</xforms:trigger>
+																		</xforms:repeat>
+																	</div>
+																</div>																
 															</xforms:group>
 														</td>
 														<td>			
@@ -547,93 +681,126 @@
 										</table>
 										
 										<!-- bind="upload-trigger"-->
-										<xforms:trigger>
-											<xforms:label>Upload</xforms:label>
-											<xforms:action ev:event="DOMActivate">
-												<xforms:action xxforms:iterate="instance('academia-response')//record[@migrate=true()][1]">
-													<xforms:insert origin="context()" nodeset="instance('record')"/>
-													
-													<!-- delete irrelevant metadata fields based on publication type -->
-													<xforms:var name="type" select="instance('record')/publication_type"/>
-													<xforms:action if="string($type)">
-														<xforms:action if="$type='section'">
-															<xforms:delete nodeset="instance('record')/*[starts-with(name(), 'journal_')]"/>
-															<xforms:delete nodeset="instance('record')/*[starts-with(name(), 'conference_')]"/>
-															<xforms:delete nodeset="instance('record')/thesis_university"/>
+										
+										<!-- only show the upload button when there is at least one record to migrate -->
+										<xforms:group ref=".[count(//record[@migrate=true()]) &gt; 0]">
+											<xforms:trigger bind="upload-trigger">
+												<xforms:label>Upload</xforms:label>
+												<xforms:action ev:event="DOMActivate">
+													<xforms:action xxforms:iterate="instance('academia-response')//record[@migrate=true()]">
+														<xforms:setvalue ref="instance('control-instance')/last" value="true()" if="position()=last()"/>
+														<xforms:insert origin="context()" nodeset="instance('record')"/>
+														
+														<!-- delete irrelevant metadata fields based on publication type -->
+														<xforms:var name="type" select="instance('record')/publication_type"/>
+														<xforms:action if="string($type)">
+															<xforms:action if="$type='section'">
+																<xforms:delete nodeset="instance('record')/*[starts-with(name(), 'journal_')]"/>
+																<xforms:delete nodeset="instance('record')/*[starts-with(name(), 'conference_')]"/>
+																<xforms:delete nodeset="instance('record')/thesis_university"/>
+															</xforms:action>
+															<xforms:action if="$type='conferencepaper'">
+																<xforms:delete nodeset="instance('record')/*[starts-with(name(), 'journal_')]"/>															
+																<xforms:delete nodeset="instance('record')/thesis_university"/>
+																<xforms:delete nodeset="instance('record')/partof_title"/>
+															</xforms:action>
+															<xforms:action if="$type='article'">
+																<xforms:delete nodeset="instance('record')/*[starts-with(name(), 'conference_')]"/>										
+																<xforms:delete nodeset="instance('record')/thesis_university"/>
+																<xforms:delete nodeset="instance('record')/partof_title"/>
+															</xforms:action>
+															<xforms:action if="$type='thesis'">
+																<xforms:delete nodeset="instance('record')/*[starts-with(name(), 'journal_')]"/>
+																<xforms:delete nodeset="instance('record')/*[starts-with(name(), 'conference_')]"/>
+																<xforms:delete nodeset="instance('record')/partof_title"/>
+															</xforms:action>
+															<xforms:action if="not($type='section') and not($type='conferencepaper') and not($type='article') and not($type='thesis')">
+																<xforms:delete nodeset="instance('record')/*[starts-with(name(), 'journal_')]"/>
+																<xforms:delete nodeset="instance('record')/*[starts-with(name(), 'conference_')]"/>
+																<xforms:delete nodeset="instance('record')/thesis_university"/>
+																<xforms:delete nodeset="instance('record')/partof_title"/>
+															</xforms:action>
 														</xforms:action>
-														<xforms:action if="$type='conferencepaper'">
-															<xforms:delete nodeset="instance('record')/*[starts-with(name(), 'journal_')]"/>															
-															<xforms:delete nodeset="instance('record')/thesis_university"/>
-															<xforms:delete nodeset="instance('record')/partof_title"/>
-														</xforms:action>
-														<xforms:action if="$type='article'">
-															<xforms:delete nodeset="instance('record')/*[starts-with(name(), 'conference_')]"/>										
-															<xforms:delete nodeset="instance('record')/thesis_university"/>
-															<xforms:delete nodeset="instance('record')/partof_title"/>
-														</xforms:action>
-														<xforms:action if="$type='thesis'">
-															<xforms:delete nodeset="instance('record')/*[starts-with(name(), 'journal_')]"/>
-															<xforms:delete nodeset="instance('record')/*[starts-with(name(), 'conference_')]"/>
-															<xforms:delete nodeset="instance('record')/partof_title"/>
-														</xforms:action>
-														<xforms:action if="not($type='section') and not($type='conferencepaper') and not($type='article') and not($type='thesis')">
-															<xforms:delete nodeset="instance('record')/*[starts-with(name(), 'journal_')]"/>
-															<xforms:delete nodeset="instance('record')/*[starts-with(name(), 'conference_')]"/>
-															<xforms:delete nodeset="instance('record')/thesis_university"/>
-															<xforms:delete nodeset="instance('record')/partof_title"/>
-														</xforms:action>
+														
+														<!-- move the file -->
+														<xforms:var name="file" select="instance('record')/file" as="node()?"/>
+														<xforms:var name="filename" select="concat(id, '_', replace($file/@filename, ' ', '_'))"/>
+														
+														<xforms:setvalue ref="instance('generator-config')/url" value="$file"></xforms:setvalue>
+														<xforms:setvalue ref="instance('generator-config')/content-type" value="$file/@mediatype"></xforms:setvalue>
+														<xforms:setvalue ref="instance('serializer-config')/url"
+															value="concat('file:/tmp/', $filename)"></xforms:setvalue>
+														<xforms:insert nodeset="instance('dump')"
+															origin="xxforms:call-xpl('oxf:/apps/academia-migrate/xpl/move-file.xpl', ('generator-config', 'serializer-config'), (instance('generator-config'), instance('serializer-config')), 'data')"></xforms:insert>
+														
+														<!-- set filename and path for posting the file to Zenodo -->
+														<xforms:setvalue ref="instance('control-instance')/file-name" value="$filename"/>
+														<xforms:setvalue ref="instance('control-instance')/file-path" value="concat('/tmp/', $filename)"/>
+														
+														<!-- transform into Zenodo API deposition JSON model -->
+														<xforms:insert nodeset="instance('zenodo-deposition-json')"
+															origin="xxforms:call-xpl('oxf:/apps/academia-migrate/xpl/xml-to-json.xpl', 'data', instance('record'), 'data')"></xforms:insert>
+														
+														<!-- post deposition -->
+														<xforms:send submission="create-deposition"/>
 													</xforms:action>
 													
-													<!-- move the file -->
-													<xforms:var name="file" select="instance('record')/file" as="node()?"/>
-													<xforms:var name="filename" select="concat(id, '_', replace($file/@filename, ' ', '_'))"/>
+													<!-- after records are published, iterate through all files and delete them from tmp -->
+													<xforms:action xxforms:iterate="instance('academia-response')//record[string-length(file) &gt; 0]">
+														<xforms:var name="id" select="context()/id"/>
+														<xforms:var name="file" select="context()/file" as="node()?"/>													
+														<xforms:var name="filename" select="concat($id, '_', replace($file/@filename, ' ', '_'))"/>
+														
+														<!-- delete source tmp binary file -->
+														<xforms:setvalue ref="instance('delete-config')/delete/url" value="$file"></xforms:setvalue>
+														<xforms:insert nodeset="instance('dump')"
+															origin="xxforms:call-xpl('oxf:/apps/academia-migrate/xpl/delete-file.xpl', 'configuration', instance('delete-config'), 'data')"></xforms:insert>
+														
+														<!-- delete the moved and renamed file -->
+														<xforms:setvalue ref="instance('delete-config')/delete/url" value="concat('file:/tmp/', $filename)"></xforms:setvalue>
+														<xforms:insert nodeset="instance('dump')"
+															origin="xxforms:call-xpl('oxf:/apps/academia-migrate/xpl/delete-file.xpl', 'configuration', instance('delete-config'), 'data')"></xforms:insert>
+													</xforms:action>
 													
-													<xforms:setvalue ref="instance('generator-config')/url" value="$file"></xforms:setvalue>
-													<xforms:setvalue ref="instance('generator-config')/content-type" value="$file/@mediatype"></xforms:setvalue>
-													<xforms:setvalue ref="instance('serializer-config')/url"
-														value="concat('file:/tmp/', $filename)"></xforms:setvalue>
-													<xforms:insert nodeset="instance('dump')"
-														origin="xxforms:call-xpl('oxf:/apps/academia-migrate/xpl/move-file.xpl', ('generator-config', 'serializer-config'), (instance('generator-config'), instance('serializer-config')), 'data')"></xforms:insert>
-													
-													<!-- set filename and path for posting the file to Zenodo -->
-													<xforms:setvalue ref="instance('control-instance')/file-name" value="$filename"/>
-													<xforms:setvalue ref="instance('control-instance')/file-path" value="concat('/tmp/', $filename)"/>
-													
-													<!-- transform into Zenodo API deposition JSON model -->
-													<xforms:insert nodeset="instance('zenodo-deposition-json')"
-														origin="xxforms:call-xpl('oxf:/apps/academia-migrate/xpl/xml-to-json.xpl', 'data', instance('record'), 'data')"></xforms:insert>
-							
-													<!-- post deposition -->
-													<!--<xforms:send submission="create-deposition"/>-->
+													<!-- toggle final case -->
+													<xforms:toggle case="publication-errors" if="instance('control-instance')/errors = true()"/>
+													<xforms:toggle case="publication-done" if="instance('control-instance')/errors = false()"/>
 												</xforms:action>
-												
-												
-												<!-- after records are published, iterate through all files and delete them from tmp -->
-												<xforms:action xxforms:iterate="instance('academia-response')//record[string-length(file) &gt; 0]">
-													<xforms:var name="id" select="context()/id"/>
-													<xforms:var name="file" select="context()/file" as="node()?"/>													
-													<xforms:var name="filename" select="concat($id, '_', replace($file/@filename, ' ', '_'))"/>
-													
-													<!-- delete source tmp binary file -->
-													<xforms:setvalue ref="instance('delete-config')/delete/url" value="$file"></xforms:setvalue>
-													<xforms:insert nodeset="instance('dump')"
-														origin="xxforms:call-xpl('oxf:/apps/academia-migrate/xpl/delete-file.xpl', 'configuration', instance('delete-config'), 'data')"></xforms:insert>
-													
-													<!-- delete the moved and renamed file -->
-													<xforms:setvalue ref="instance('delete-config')/delete/url" value="concat('file:/tmp/', $filename)"></xforms:setvalue>
-													<xforms:insert nodeset="instance('dump')"
-														origin="xxforms:call-xpl('oxf:/apps/academia-migrate/xpl/delete-file.xpl', 'configuration', instance('delete-config'), 'data')"></xforms:insert>
-												</xforms:action>
-											</xforms:action>
-										</xforms:trigger>
+											</xforms:trigger>
+										</xforms:group>
+										
+										<!-- otherwise show message that no records are selected for migration -->
+										<xforms:group ref=".[count(//record[@migrate=true()]) = 0]">
+											<div class="bg-danger alert-box">
+												<span class="glyphicon glyphicon-exclamation-sign"></span>
+												<strong>Alert:</strong> No records have been selected for migration.</div>
+										</xforms:group>										
 									</xforms:case>
 								</xforms:switch>
 							</xforms:group>
+						</xforms:case>
+						<xforms:case id="publication-done">
+							<h2>Migration Complete</h2>
+							<p>The migration has completed successfully. Below is a list of migrated documents:</p>
+							<ul>
+								<xforms:repeat nodeset="instance('published')/record">
+									<li>
+										<xforms:trigger appearance="minimal">
+											<xforms:label value="title"/>
+											<xforms:load show="new" resource="{url}" ev:event="DOMActivate"/>
+										</xforms:trigger>
+									</li>
+								</xforms:repeat>
+							</ul>
+						</xforms:case>
+						<xforms:case id="publication-errors">
+							<h2>Migration Errors</h2>
+							<p>The migration has run into errors. Please email ewg4xuva [at] gmail {.} com with a description of your upload process.</p>
 						</xforms:case>
 					</xforms:switch>
 				</div>
 			</div>
 		</div>
-		<fr:xforms-inspector></fr:xforms-inspector>
+		<!--<fr:xforms-inspector></fr:xforms-inspector>-->
 	</body>
 </html>

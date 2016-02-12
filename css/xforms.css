@@ -21,27 +21,11 @@
 	border:0;
 	float:left;
 }
-#form h1, #form h2, #form h3, #form h4, #form h5, #form h6 {
+#form h3, #form h4, #form h5, #form h6 {
 	display:inline;
-}
-.section>h2 {
-	display:inline;
-}
-.section {
-	margin-bottom:25px;
-	width:100%;
-	display:table;
 }
 .subsection {
-	padding:10px 0 10px 25px;
-	width:95%;
-}
-.pair_div {
-	width:75%;
-	display:table;
-	border:1px solid silver;
-	padding:5px;
-	margin:2px 0;
+	margin-bottom:10px;
 }
 .add {
 	display:inline;

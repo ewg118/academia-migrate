@@ -71,11 +71,11 @@
 	</xsl:template>-->
 
 	<!-- ignore the following -->
-	<xsl:template match="id|publication_day|publication_month|publication_year|url|file"/>
+	<xsl:template match="id|publication_day|publication_month|publication_year|url|file|publication_date_valid"/>
 
 	<!-- call templates for simple elements, ignoring some from initial scrape model -->
 	<xsl:template
-		match="*[not(self::id|self::url|self::publication_day|self::publication_month|self::publication_year|self::file)][not(child::*)][string-length(.) &gt; 0]">
+		match="*[not(self::id|self::url|self::publication_day|self::publication_month|self::publication_year|self::file|self::publication_date_valid)][not(child::*)][string-length(.) &gt; 0]">
 		<xsl:variable name="val" select="replace(., '&#x022;', '\\&#x022;')"/>
 
 		<xsl:element name="{name()}">

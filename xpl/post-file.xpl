@@ -29,11 +29,10 @@
 				<xsl:param name="access_token" select="/request/parameters/parameter[name='access_token']/value"/>
 				<xsl:param name="id" select="/request/parameters/parameter[name='id']/value"/>
 				<xsl:param name="file" select="/request/parameters/parameter[name='file']/value"/>
-				<xsl:param name="env" select="/request/parameters/parameter[name='env']/value"/>
 				
 				<xsl:variable name="post-file.php_url">http://localhost/cgi-bin/post-file.php</xsl:variable>
 				
-				<xsl:variable name="service" select="concat($post-file.php_url, '?name=', encode-for-uri($name), '&amp;access_token=', $access_token, '&amp;id=', $id, '&amp;file=', encode-for-uri($file)), '&amp;env=', $env">
+				<xsl:variable name="service" select="concat($post-file.php_url, '?name=', encode-for-uri($name), '&amp;access_token=', $access_token, '&amp;id=', $id, '&amp;file=', encode-for-uri($file))">
 					
 				</xsl:variable>
 				
