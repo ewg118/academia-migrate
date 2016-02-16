@@ -18,10 +18,12 @@
 		<xforms:model>
 			<xforms:instance id="control-instance" xxforms:exclude-result-prefixes="#all">
 				<controls xmlns="">
+					<json-supported>false</json-supported>
 					<zenodo_api_url></zenodo_api_url>
-					<zenodo_access_token></zenodo_access_token>
+					<zenodo_access_token>Pxzc6z4suJwzf2AzbzqvQAHHzLw9n0WxV2yC5ZMO4uqqGELBxDIjgYqQtxle</zenodo_access_token>
 					<token-valid>false</token-valid>
 					<academia_uri></academia_uri>
+					<academia_uri-valid>false</academia_uri-valid>
 					<upload-trigger>false</upload-trigger>
 					<deposition-id/>
 					<file-name/>
@@ -109,6 +111,10 @@
 				</config>
 			</xforms:instance>
 			
+			<xforms:instance id="json-test-instance">
+				<json xmlns=""/>
+			</xforms:instance>
+			
 			<xforms:instance id="generator-config">
 				<config xmlns="">
 					<url></url>
@@ -127,9 +133,9 @@
 
 			<!-- **************** BINDINGS ********************** -->
 			<xforms:bind nodeset="instance('control-instance')">
+				<xforms:bind nodeset="json-supported" type="xs:boolean"/>
 				<xforms:bind nodeset="zenodo_access_token" readonly="../token-valid = true()"/>
-				<xforms:bind nodeset="academia_uri"
-					constraint="matches(., 'https://[a-z]+\.academia\.edu/[A-Za-z]+')"></xforms:bind>
+				<xforms:bind nodeset="academia_uri-valid" id="academia_uri-valid" type="xs:boolean" readonly=". != true()"/>
 				<xforms:bind id="upload-trigger" nodeset="upload-trigger" type="xs:boolean" readonly=". != true()"></xforms:bind>
 				<xforms:bind id="validate-trigger" nodeset="token-valid" type="xs:boolean" readonly=". = true()"/>
 				<xforms:bind nodeset="last" type="xs:boolean"/>
@@ -173,6 +179,14 @@
 
 			<!-- **************** SUBMISSIONS ********************** -->
 			
+			<!-- test to see whether the XForms engine parses JSON -->
+			<xforms:submission id="test-json"
+				resource="/academia-migrate/test-json" 
+				replace="instance" instance="json-test-instance" method="get">
+				<xforms:setvalue ref="instance('control-instance')/json-supported" value="true()" ev:event="xforms-submit-done"/>
+				<xforms:setvalue ref="instance('control-instance')/json-supported" value="false()" ev:event="xforms-submit-error"/>		
+			</xforms:submission>
+			
 			<!-- Zenodo API -->
 			<xforms:submission id="validate-token"
 				resource="{instance('control-instance')/zenodo_api_url}deposit/depositions/?access_token={instance('control-instance')/zenodo_access_token}" 
@@ -180,9 +194,7 @@
 				<xforms:action ev:event="xforms-submit-error">
 					<xforms:message level="modal">Unable to get response
 						from Zenodo (incorrect access token?).</xforms:message>
-					<xforms:setvalue ref="instance('control-instance')/errors" value="true()"/>
-				</xforms:action>
-				
+				</xforms:action>				
 				
 				<!-- if JSON is received, then proceed to next step -->
 				<xforms:setvalue ref="instance('control-instance')/token-valid" value="true()" ev:event="xforms-submit-done"/>
@@ -250,8 +262,16 @@
 			
 			<!-- **************** XFORMS-MODEL-CONSTRUCT-DONE ********************** -->
 			<xforms:action ev:event="xforms-model-construct-done">
+				<xforms:send submission="test-json"/>
+				
 				<!-- set the Zenodo API URL based on environment config variable -->
 				<xforms:setvalue ref="instance('control-instance')/zenodo_api_url" value="if (instance('config')/env = 'dev') then 'https://sandbox.zenodo.org/api/' else 'https://zenodo.org/api/'"/>
+			</xforms:action>
+			
+			<!-- **************** XFORMS-READY ********************** -->
+			<xforms:action ev:event="xforms-ready">
+				<xforms:toggle case="begin" if="instance('control-instance')/json-supported=true()"/>
+				<xforms:toggle case="json-error" if="instance('control-instance')/json-supported=false()"/>
 			</xforms:action>
 		</xforms:model>
 	</head>
@@ -270,20 +290,22 @@
 					
 					<h1>Academia Migrate</h1>
 					<xforms:switch>
+						
+						<!-- introductory text-->
 						<xforms:case id="begin">
 							<h2>Background</h2>
 							<p>I developed this application to migrate scholarly publications from the pseudo-open Academia.edu into Zenodo.org, 
 								which is a truly open platform for the dissemination of research data and publications. Zenodo is developed by CERN and backed by EU funding. 
-							This application extracts publication metadata (with PHP) from an Academia.edu user profile and facilitates import of this metadata (if there are associated document files)
-							and re-upload of these document files into Zenodo.</p>
+								This application extracts publication metadata (with PHP) from an Academia.edu user profile and facilitates import of this metadata (if there are associated document files)
+								and re-upload of these document files into Zenodo.</p>
 							<p>Despite Academia.edu's (poor) terms of service, Google's recent victory over academic publishers has demonstrated
-							that metadata are not copyrightable, and can be freely harvested from the web. However, the document files cannot be harvested automatically (only authenticated users can download them),
-							and so there needs to be an intermediate step in which Academia users re-upload their files into this system for posting via API into Zenodo. Upon completion of the migration process,
-							these uploaded files will be deleted from this server.</p>
+								that metadata are not copyrightable, and can be freely harvested from the web. However, the document files cannot be harvested automatically (only authenticated users can download them),
+								and so there needs to be an intermediate step in which Academia users re-upload their files into this system for posting via API into Zenodo. Upon completion of the migration process,
+								these uploaded files will be deleted from this server.</p>
 							
 							<p>The code is open source at <a href="https://github.com/ewg118/academia-migrate">https://github.com/ewg118/academia-migrate</a>. 
 								It relies on a PHP script for scraping metadata from Academia.edu and posting files at <code>multipart/form-data</code>. The remaining interactions
-							are handled in <a href="http://www.orbeon.com">Orbeon</a>, an XForms processor.</p>
+								are handled in <a href="http://www.orbeon.com">Orbeon</a>, an XForms processor.</p>
 							
 							<h3>Prerequesites</h3>
 							<ol>
@@ -298,7 +320,9 @@
 								<xforms:label>Begin</xforms:label>
 								<xforms:toggle ev:event="DOMActivate" case="authenticate-zenodo"/>
 							</xforms:trigger>
-						</xforms:case> 
+						</xforms:case>	
+						
+						<!-- validate Zenodo access token -->
 						<xforms:case id="authenticate-zenodo">
 							<h2>Validate Zenodo.org Access Token</h2>
 							<p>After registering your Zenodo.org account, <a href="https://zenodo.org/dev#restapi-auth">request an access token</a>, 
@@ -325,21 +349,27 @@
 							</xforms:group>
 						</xforms:case>
 						
-						<!-- Step 2: Parse and validate Academia.edu publication metadata -->
+						<!-- Parse and validate Academia.edu publication metadata -->
 						<xforms:case id="academia-records">
 							<xforms:group ref="instance('academia-response')">
 								<h2>Parse Academia.edu Data</h2>
-								<p>Copy and paste the URL for your Academia.edu profile in the input below and click "Get Record." E.g., <code>https://numismatics.academia.edu/EthanGruber</code></p>
+								<p>Copy and paste the URL for your Academia.edu profile in the input below and click "Get Record." E.g., <code>https://numismatics.academia.edu/EthanGruber</code>. The "Get Records" button will activate when the Profile URL is valid.</p>
+								
 								<!-- switch for different interfaces of the academia response phase -->
 								<xforms:switch>
 									<xforms:case id="academia-get-records">
 										<div>
-											<xforms:input ref="instance('control-instance')/academia_uri">
+											<xforms:input ref="instance('control-instance')/academia_uri" incremental="true">
 												<xforms:label>Profile URL</xforms:label>
 												<xforms:alert>URL doesn't match expression for an Academia.edu
 													profile</xforms:alert>
+												<xforms:action ev:event="xforms-value-changed">
+													<xforms:var name="val" select="."/>
+													<xforms:setvalue ref="instance('control-instance')/academia_uri-valid" value="true()" if="matches($val, 'https://[a-z]+\.academia\.edu/[A-Za-z]+')"/>
+													<xforms:setvalue ref="instance('control-instance')/academia_uri-valid" value="false()" if="not(matches($val, 'https://[a-z]+\.academia\.edu/[A-Za-z]+'))"/>
+												</xforms:action>												
 											</xforms:input>
-											<xforms:trigger>
+											<xforms:trigger bind="academia_uri-valid">
 												<xforms:label>Get Records</xforms:label>
 												<xforms:action ev:event="DOMActivate">
 													<xforms:send submission="get-records"></xforms:send>
@@ -800,6 +830,13 @@
 						<xforms:case id="publication-errors">
 							<h2>Migration Errors</h2>
 							<p>The migration has run into errors. Please email ewg4xuva [at] gmail {.} com with a description of your upload process.</p>
+						</xforms:case>
+						<xforms:case id="json-error">							
+							<xforms:group ref=".[count(//record[@migrate=true()]) = 0]">
+								<div class="bg-danger alert-box">
+									<span class="glyphicon glyphicon-exclamation-sign"></span>
+									<strong>Alert:</strong> This XForms engine does not support JSON processing.</div>
+							</xforms:group>
 						</xforms:case>
 					</xforms:switch>
 				</div>
