@@ -76,7 +76,10 @@ function process_html($output, $writer) {
 				$obj = json_decode(trim($work));
 	
 				//only gather those papers where the owner_id is the current user id.
-				if ($obj->owner_id == $userId && !in_array($obj->id, $ids)) {
+				
+				//Note: 17 Feb - gather all publications, including those in which the current user is not owner (tagged co-author)
+				//$obj->owner_id == $userId && 
+				if (!in_array($obj->id, $ids)) {
 					//only process papers, etc. that have associated document/presentation files
 					if ($obj->attachments) {						
 						//add id into array of ids to prevent processing of duplicates in a page
