@@ -47,12 +47,9 @@
 .orbeon .xforms-select1-appearance-full .xforms-label {
 	vertical-align: top
 }
-.orbeon .xforms-input input, .orbeon .xforms-textarea textarea, .orbeon .xforms-select1 select {
+.orbeon .xforms-input input[type=text], .orbeon .xforms-textarea textarea, .orbeon .xforms-select1 select {
 	width: 20em;
 	margin-bottom: 2px;
-}
-.orbeon .xforms-type-boolean input {
-	width:0;
 }
 .orbeon .xforms-repeat-selected-item-1 .form-td {
 	background-color: #f5f5f5
@@ -83,40 +80,4 @@
 }
 .xbl-component {
 	margin:5px 0;
-}
-/*
-  ****************************************
-  PAGINATION
-  ****************************************
- */
-.paging_div {
-	width:100%;
-	display:table;
-	padding-top:10px;
-	padding-bottom:10px;
-}
-.pagingBtn, .pagingSep {
-	padding:2px;
-	text-decoration:none;
-}
-.pagingBtn {
-	font-weight:bold;
-}
-.pagingBtn:hover {
-	background-color:#DDDDDD;
-	text-decoration:underline;
-}
-/*
-  ****************************************
-  LAYOUT FORM
-  ****************************************
- */
-.layout-image-container {
-	margin:80px;
-	text-align:center;
-}
-.layout-image {
-	background-color:silver;
-	border:1px solid gray;
-	padding:10px 0;
 }
