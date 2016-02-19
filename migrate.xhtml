@@ -144,7 +144,7 @@
 				<xforms:bind nodeset="records">
 					<xforms:bind nodeset="record">
 						<xforms:bind nodeset="@migrate" type="xs:boolean"></xforms:bind>
-						<xforms:bind nodeset="publication_date" required="../@migrate=true()"></xforms:bind>
+						<xforms:bind nodeset="publication_date" type="xs:date" required="../@migrate=true()"></xforms:bind>
 						<xforms:bind nodeset="publication_date_valid" type="xs:boolean"></xforms:bind>
 						<xforms:bind nodeset="creators">
 							<xforms:bind nodeset="creator" required="ancestor::record/@migrate=true()">
@@ -336,12 +336,12 @@
 						<!-- Parse and validate Academia.edu publication metadata -->
 						<xforms:case id="academia-records">
 							<xforms:group ref="instance('academia-response')">
-								<h2>Parse Academia.edu Data</h2>
-								<p>Copy and paste the URL for your Academia.edu profile in the input below and click "Get Record." E.g., <code>https://numismatics.academia.edu/EthanGruber</code>. The
-									"Get Records" button will activate when the Profile URL is valid.</p>
+								<h2>Parse Academia.edu Data</h2>								
 								<!-- switch for different interfaces of the academia response phase -->
 								<xforms:switch>
 									<xforms:case id="academia-get-records">
+										<p>Copy and paste the URL for your Academia.edu profile in the input below and click "Get Record." E.g., <code>https://numismatics.academia.edu/EthanGruber</code>. The
+											"Get Records" button will activate when the Profile URL is valid.</p>
 										<div>
 											<xforms:input ref="instance('control-instance')/academia_uri" incremental="true">
 												<xforms:label>Profile URL</xforms:label>
@@ -389,7 +389,7 @@
 											<dd>When upload type is 'publication', the publication type must be selected. 'article', 'thesis', 'section', and 'conferencepaper' allow additional fields
 												about the parent publication</dd>
 											<dt>Publication Date</dt>
-											<dd>Must conform to YYYY-MM-DD format (date picker will be implemented when a bug is fixed in Orbeon)</dd>
+											<dd>Use the date picker to select the date. It does need to conform to a particular day, and not an approximate year or month.</dd>
 											<dt>Abstract</dt>
 											<dd>Required by Zenodo</dd>
 											<dt>Creators</dt>
