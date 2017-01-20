@@ -26,7 +26,7 @@ $writer->setIndent(true);
 $writer->setIndentString("    ");
 
 //validate URI
-if (preg_match('/https:\/\/[a-z]+\.academia.edu\/[A-Za-z]+/', $uri)){
+if (preg_match('/https?:\/\/[a-z]+\.academia.edu\/[A-Za-z]+/', $uri)){
 	//initiate curl
 	$ch = curl_init();
 	curl_setopt($ch, CURLOPT_URL, $uri);
@@ -51,7 +51,7 @@ if (preg_match('/https:\/\/[a-z]+\.academia.edu\/[A-Za-z]+/', $uri)){
 
 function process_html($output, $writer) {
 	//get creator metadata
-	preg_match('/c\.User\.set_viewed\((.*)\);\n/', $output, $matches);
+	preg_match('/\.User\.set_viewed\((.*)\);\n/', $output, $matches);
 	$ids = array();
 
 	if (isset($matches[1])){
@@ -62,8 +62,9 @@ function process_html($output, $writer) {
 		$url = $user->url;
 	
 		//process works
-		preg_match_all('/workJSON:(.*)\n/', $output, $works);
+		preg_match_all('/workJSON:\s?(.*),\n/', $output, $works);
 	
+		
 		$count = 0;
 		$writer->startElement('response');		
 		$writer->writeAttribute('xmlns:xsi', 'http://www.w3.org/2001/XMLSchema-instance');
@@ -74,7 +75,6 @@ function process_html($output, $writer) {
 			$writer->startElement('records');
 			foreach ($works[1] as $work){
 				$obj = json_decode(trim($work));
-	
 				//only gather those papers where the owner_id is the current user id.
 				
 				//Note: 17 Feb - gather all publications, including those in which the current user is not owner (tagged co-author)

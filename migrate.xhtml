@@ -348,9 +348,9 @@
 												<xforms:alert>URL doesn't match expression for an Academia.edu profile</xforms:alert>
 												<xforms:action ev:event="xforms-value-changed">
 													<xforms:var name="val" select="."></xforms:var>
-													<xforms:setvalue ref="instance('control-instance')/academia_uri-valid" value="true()" if="matches($val, 'https://[a-z]+\.academia\.edu/[A-Za-z]+')"></xforms:setvalue>
+													<xforms:setvalue ref="instance('control-instance')/academia_uri-valid" value="true()" if="matches($val, 'https?://[a-z]+\.academia\.edu/[A-Za-z]+')"></xforms:setvalue>
 													<xforms:setvalue ref="instance('control-instance')/academia_uri-valid" value="false()"
-														if="not(matches($val, 'https://[a-z]+\.academia\.edu/[A-Za-z]+'))"></xforms:setvalue>
+														if="not(matches($val, 'https?://[a-z]+\.academia\.edu/[A-Za-z]+'))"></xforms:setvalue>
 												</xforms:action>
 											</xforms:input>
 											<xforms:trigger bind="academia_uri-valid">
