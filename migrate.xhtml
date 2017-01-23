@@ -144,7 +144,7 @@
 				<xforms:bind nodeset="records">
 					<xforms:bind nodeset="record">
 						<xforms:bind nodeset="@migrate" type="xs:boolean"/>
-						<xforms:bind nodeset="publication_date" type="xs:date" relevant="../@migrate=true()"/>
+						<xforms:bind nodeset="publication_date" type="xs:date" readonly="../@migrate=false()"/>
 						<xforms:bind nodeset="publication_date_valid" type="xs:boolean"/>
 						<xforms:bind nodeset="creators">
 							<xforms:bind nodeset="creator" required="ancestor::record/@migrate=true()">
@@ -444,7 +444,12 @@
 
 													<tr>
 														<td>
-															<xforms:input ref="@migrate"/>
+															<xforms:input ref="@migrate">
+																<!-- set value to current date if disabled (gets around a bug) -->
+																<xforms:action ev:event="xforms-value-changed">
+																	<xforms:setvalue ref="../publication_date" value="current-date()" if="not(string(../publication_date))"/>
+																</xforms:action>
+															</xforms:input>
 														</td>
 														<td>
 															<h3>
