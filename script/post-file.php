@@ -10,7 +10,7 @@
 //set output header
 header('Content-Type: application/json');
 
-//set the environment
+//set the environment, 'dev', or 'prod'
 $env = 'dev';
 
 //the line below is for passing request parameters from the command line.
@@ -29,37 +29,5 @@ if ($env == 'dev'){
 
 //execute as command line since php5-curl does not work correctly
 echo exec('curl -F name=' . $name . ' -F file=@' . $file . ' ' . $url);
-
-/*$headers = array("Content-Type:multipart/form-data"); // cURL headers for file uploading
-
-//initiate curl
-$ch = curl_init();
-$options = array(
-		CURLOPT_URL => $url,
-		CURLOPT_HEADER => true,
-		CURLOPT_POST => 1,
-		CURLOPT_HTTPHEADER => $headers,
-		CURLOPT_POSTFIELDS => $postfields,
-		CURLOPT_RETURNTRANSFER => true,
-		CURLOPT_INFILESIZE => filesize($file)
-); // cURL options
-
-curl_setopt_array($ch, $options);
-
-echo "execute curl\n";
-curl_exec($ch);
-
-if(!curl_errno($ch))
-{
-	$info = curl_getinfo($ch);
-	if ($info['http_code'] == 200)
-		$errmsg = "File uploaded successfully";
-}
-else
-{
-	$errmsg = curl_error($ch);
-}
-
-curl_close($ch);*/
 
 ?>

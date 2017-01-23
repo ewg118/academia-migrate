@@ -14,7 +14,6 @@
 
 		<!-- model -->
 		<xforms:model>
-
 			<xforms:instance id="control-instance" xxforms:exclude-result-prefixes="#all">
 				<controls xmlns="">
 					<json-supported>false</json-supported>
@@ -308,16 +307,17 @@
 								Academia.edu is purposely designed to thwart harvesting.</p>
 							<p>The code is open source at <a href="https://github.com/ewg118/academia-migrate">https://github.com/ewg118/academia-migrate</a>.
 								It relies on a PHP script for scraping metadata from Academia.edu and posting files at <code>multipart/form-data</code>. The
-								remaining interactions are handled in <a href="http://www.orbeon.com">Orbeon</a>, an XForms processor.</p>
+								remaining interactions are handled in <a href="http://www.orbeon.com">Orbeon</a>, an XForms processor. Please submit issues to
+								Github. The HTML on Academia.edu may change from time to time, and the scraping script may require revision.</p>
 							<h3>Prerequesites</h3>
 							<ol>
 								<li>An Academia.edu profile.</li>
 								<li>A Zenodo.org account and activated access token (see next page).</li>
 							</ol>
-							<h3>Note</h3>
+							<!--<h3>Note</h3>
 							<p>This application is in development mode, and so it only communicates with accounts on the Zenodo.org sandbox: <a
 									href="https://sandbox.zenodo.org">https://sandbox.zenodo.org</a>. Please create your account and token (details on the next
-								page) on https://sandbox.zenodo.org until the application has been fully tested.</p>
+								page) on https://sandbox.zenodo.org until the application has been fully tested.</p>-->
 							<xforms:trigger>
 								<xforms:label>Begin</xforms:label>
 								<xforms:toggle ev:event="DOMActivate" case="authenticate-zenodo"/>
@@ -326,10 +326,10 @@
 						<!-- validate Zenodo access token -->
 						<xforms:case id="authenticate-zenodo">
 							<h2>Validate Zenodo.org Access Token</h2>
-							<p>After registering your Zenodo.org account, <a href="https://sandbox.zenodo.org/dev#restapi-auth">request an access token</a>, and
-								grant privileges for <code>deposit:write</code> and <code>deposit:actions</code>. At this time, we cannot support Zenodo's OAuth
-								API as we cannot support HTTPS. However, your access token is not saved or transmitted in any way except to interact with the
-								Zenodo API. It is secure.</p>
+							<p>After registering your Zenodo.org account, <a href="https://zenodo.org/dev#restapi-auth">request an access token</a>, and grant
+								privileges for <code>deposit:write</code> and <code>deposit:actions</code>. At this time, we cannot support Zenodo's OAuth API
+								as we cannot support HTTPS. However, your access token is not saved or transmitted in any way except to interact with the Zenodo
+								API. It is secure.</p>
 							<xforms:input ref="instance('control-instance')/zenodo_access_token" incremental="true">
 								<xforms:label>Token</xforms:label>
 							</xforms:input>
