@@ -26,7 +26,7 @@ $writer->setIndent(true);
 $writer->setIndentString("    ");
 
 //validate URI
-if (preg_match('/https?:\/\/[a-z]+\.academia.edu\/[A-Za-z]+/', $uri)){
+if (preg_match('/https?:\/\/[^\.]+\.academia.edu\/[A-Za-z]+/', $uri)){
 	//initiate curl
 	$ch = curl_init();
 	curl_setopt($ch, CURLOPT_URL, $uri);

@@ -356,7 +356,8 @@
 									<xforms:case id="academia-get-records">
 										<p>Copy and paste the URL for your Academia.edu profile in the input below and click "Get Record." E.g.,
 												<code>https://numismatics.academia.edu/EthanGruber</code>. The "Get Records" button will activate when the
-											Profile URL is valid.</p>
+											Profile URL is valid. <strong>Note:</strong> if you are certain the URL is correct but the button does not activate,
+											please create a Github issue and paste your profile URL, as there is a pattern matching problem.</p>
 										<div>
 											<xforms:input ref="instance('control-instance')/academia_uri" incremental="true">
 												<xforms:label>Profile URL</xforms:label>
@@ -364,9 +365,9 @@
 												<xforms:action ev:event="xforms-value-changed">
 													<xforms:var name="val" select="."/>
 													<xforms:setvalue ref="instance('control-instance')/academia_uri-valid" value="true()"
-														if="matches($val, 'https?://[a-z]+\.academia\.edu/[A-Za-z]+')"/>
+														if="matches($val, 'https?://[^\.]+\.academia\.edu/[A-Za-z]+')"/>
 													<xforms:setvalue ref="instance('control-instance')/academia_uri-valid" value="false()"
-														if="not(matches($val, 'https?://[a-z]+\.academia\.edu/[A-Za-z]+'))"/>
+														if="not(matches($val, 'https?://[^\.]+\.academia\.edu/[A-Za-z]+'))"/>
 												</xforms:action>
 											</xforms:input>
 											<xforms:trigger bind="academia_uri-valid">
@@ -447,7 +448,8 @@
 															<xforms:input ref="@migrate">
 																<!-- set value to current date if disabled (gets around a bug) -->
 																<xforms:action ev:event="xforms-value-changed">
-																	<xforms:setvalue ref="../publication_date" value="current-date()" if="not(string(../publication_date))"/>
+																	<xforms:setvalue ref="../publication_date" value="current-date()"
+																		if="not(string(../publication_date))"/>
 																</xforms:action>
 															</xforms:input>
 														</td>
