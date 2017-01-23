@@ -847,7 +847,7 @@
 							<h2>Migration Complete</h2>
 							<p>The migration has completed successfully. Below is a list of migrated documents:</p>
 							<ul>
-								<xforms:repeat nodeset="instance('published')/record">
+								<xforms:repeat nodeset="instance('published')/record[@migrate=true()]">
 									<li>
 										<xforms:output ref="title"/>
 										<!--<xforms:trigger appearance="minimal">
