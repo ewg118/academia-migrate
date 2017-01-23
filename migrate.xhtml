@@ -844,10 +844,11 @@
 							<ul>
 								<xforms:repeat nodeset="instance('published')/record">
 									<li>
-										<xforms:trigger appearance="minimal">
+										<xforms:output ref="title"/>
+										<!--<xforms:trigger appearance="minimal">
 											<xforms:label value="title"/>
 											<xforms:load show="new" resource="{url}" ev:event="DOMActivate"/>
-										</xforms:trigger>
+										</xforms:trigger>-->
 									</li>
 								</xforms:repeat>
 							</ul>
