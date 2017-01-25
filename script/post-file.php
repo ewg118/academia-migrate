@@ -28,6 +28,7 @@ if ($env == 'dev'){
 }
 
 //execute as command line since php5-curl does not work correctly
-echo exec('curl -F name=' . $name . ' -F file=@' . $file . ' ' . $url);
+$curl = "curl -F 'name={$name}' -F 'file=@{$file}' {$url}";
+echo exec($curl);
 
 ?>

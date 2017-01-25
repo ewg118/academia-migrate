@@ -162,7 +162,11 @@
 							relevant="../publication_type='conferencepaper'"/>
 						<xforms:bind nodeset="conference_dates" required="../conference_title" relevant="../publication_type='conferencepaper'"/>
 						<xforms:bind nodeset="conference_place" required="../conference_title" relevant="../publication_type='conferencepaper'"/>
-						<xforms:bind nodeset="file" id="upload-control" required="../@migrate=true()" readonly="../@migrate=false()"/>
+						<xforms:bind nodeset="file" id="upload-control" required="../@migrate=true()" readonly="../@migrate=false()">
+							<xforms:bind nodeset="@encoded_filename" calculate="encode-for-uri(replace(../@filename, ' ', '_'))"/>
+							<xforms:bind nodeset="@filename_valid" calculate="replace(../@filename, ' ', '_') = ../@encoded_filename"
+								constraint="if (ancestor::record/@migrate=true()) then (. = true()) else (. = true() or . = false()) " type="xs:boolean"/>
+						</xforms:bind>
 					</xforms:bind>
 				</xforms:bind>
 			</xforms:bind>
@@ -291,15 +295,16 @@
 						<!-- introductory text-->
 						<xforms:case id="begin">
 							<h2>Background</h2>
-							<p>I developed this application to migrate scholarly publications from the pseudo-open Academia.edu into Zenodo.org, which is a
-								truly open platform for the dissemination of research data and publications. Zenodo is developed by CERN and backed by EU
-								funding. This application extracts publication metadata (with PHP) from an Academia.edu user profile web page and facilitates
-								import of this metadata (if there are associated document files) and re-upload of these document files into Zenodo.</p>
-							<p>Despite Academia.edu's (poor) terms of service, Google's recent victory over academic publishers has demonstrated that metadata
-								are not copyrightable, and can be freely harvested from the web. However, the document files cannot be harvested automatically
-								(only authenticated users can download them), and so there needs to be an intermediate step in which Academia users re-upload
-								their files into this system for posting via API into Zenodo. Upon completion of the migration process, these uploaded files
-								will be deleted from this server.</p>
+							<p>For the full explanation of my reasoning behind this project, see <a
+									href="http://numismatics.org/pocketchange/open-access-academia-edu-and-why-im-all-in-on-zenodo-org/" target="_blank">Open
+									Access, Academia.edu, and why I'm all-in on Zenodo.org</a> on the American Numismatic Society blog.</p>
+							<p>This application extracts publication metadata from an Academia.edu user profile web page and facilitates import of this metadata
+								(if there are associated document files) and re-upload of these document files into Zenodo. Despite Academia.edu's (poor) terms
+								of service, Google's recent victory over academic publishers has demonstrated that metadata are not copyrightable, and can be
+								freely harvested from the web. However, the document files cannot be harvested automatically (only authenticated users can
+								download them), and so there needs to be an intermediate step in which Academia users re-upload their files into this system for
+								posting via API into Zenodo. Upon completion of the migration process, these uploaded files will be deleted from this
+								server.</p>
 							<p>It should be noted that an Academia.edu profile seems to only include as many as seven publications of a certain type (papers,
 								talks, etc.). As a result, this framework will only migrate those documents embedded ino the user profile. Users with many
 								publications may need to re-run this migration over several iterations, importing seven papers at a time, deleting them from
@@ -450,6 +455,7 @@
 																<xforms:action ev:event="xforms-value-changed">
 																	<xforms:setvalue ref="../publication_date" value="current-date()"
 																		if="not(string(../publication_date))"/>
+																	<!-- reset any file upload values -->
 																</xforms:action>
 															</xforms:input>
 														</td>
@@ -740,6 +746,14 @@
 															</xforms:group>
 															<xforms:group ref=".[string(file)]">
 																<xforms:group ref="file">
+																	<xforms:var name="file" select="."/>
+																	
+																	<xforms:group ref=".[@filename_valid = false()]">
+																		<div class="bg-danger alert-box">
+																			<span class="glyphicon glyphicon-exclamation-sign"></span>
+																			<strong>Alert:</strong> There may be a special character in your filename that might
+																			result in an upload error.</div>
+																	</xforms:group>
 																	<div>
 																		<xforms:output ref="@filename">
 																			<xforms:label>filename</xforms:label>
@@ -749,6 +763,24 @@
 																		<xforms:output ref="@mediatype">
 																			<xforms:label>mediatype</xforms:label>
 																		</xforms:output>
+																	</div>
+																	<div>
+																		<xforms:trigger appearance="minimal">
+																			<xforms:label><span class="glyphicon glyphicon-remove"></span> Delete
+																				File</xforms:label>
+																			<xforms:action ev:event="DOMActivate">
+																				<!-- delete source tmp binary file -->
+																				<xforms:setvalue ref="instance('delete-config')/delete/url" value="$file"/>
+																				<xforms:insert nodeset="instance('dump')"
+																					origin="xxforms:call-xpl('oxf:/apps/academia-migrate/xpl/delete-file.xpl', 'configuration', instance('delete-config'), 'data')"/>
+																				
+																				<!-- reset file/attribute values -->
+																				<xforms:setvalue ref="@filename"/>
+																				<xforms:setvalue ref="@mediatype"/>
+																				<xforms:setvalue ref="@size"/>
+																				<xforms:setvalue ref="."/>
+																			</xforms:action>
+																		</xforms:trigger>
 																	</div>
 																</xforms:group>
 															</xforms:group>
@@ -799,6 +831,7 @@
 														</xforms:action>
 														<!-- move the file -->
 														<xforms:var name="file" select="instance('record')/file" as="node()?"/>
+														<!-- replace spaces with underscores in filename and then encode the special characters for URI -->
 														<xforms:var name="filename" select="concat(id, '_', replace($file/@filename, ' ', '_'))"/>
 														<xforms:setvalue ref="instance('generator-config')/url" value="$file"/>
 														<xforms:setvalue ref="instance('generator-config')/content-type" value="$file/@mediatype"/>
@@ -818,7 +851,7 @@
 													<xforms:action xxforms:iterate="instance('academia-response')//record[string-length(file) &gt; 0]">
 														<xforms:var name="id" select="context()/id"/>
 														<xforms:var name="file" select="context()/file" as="node()?"/>
-														<xforms:var name="filename" select="concat($id, '_', replace($file/@filename, ' ', '_'))"/>
+														<xforms:var name="filename" select="concat(id, '_', replace($file/@filename, ' ', '_'))"/>
 														<!-- delete source tmp binary file -->
 														<xforms:setvalue ref="instance('delete-config')/delete/url" value="$file"/>
 														<xforms:insert nodeset="instance('dump')"
@@ -851,18 +884,16 @@
 							<ul>
 								<xforms:repeat nodeset="instance('published')/record[@migrate=true()]">
 									<li>
-										<xforms:output ref="title"/>
-										<!--<xforms:trigger appearance="minimal">
-											<xforms:label value="title"/>
-											<xforms:load show="new" resource="{url}" ev:event="DOMActivate"/>
-										</xforms:trigger>-->
+										<a href="{url}" title="{title}" target="_blank"><xforms:output ref="title"/></a>
 									</li>
 								</xforms:repeat>
 							</ul>
 						</xforms:case>
 						<xforms:case id="publication-errors">
 							<h2>Migration Errors</h2>
-							<p>The migration has run into errors. Please email ewg4xuva [at] gmail {.} com with a description of your upload process.</p>
+							<p>The migration has run into errors. Some files may have uploaded successfully and others not. Please check your Zenodo profile.
+								Please email ewg4xuva [at] gmail {.} com with a description of your upload process. If you have a Github profile, please create
+								an issue <a href="https://github.com/ewg118/academia-migrate/issues">here</a>.</p>
 						</xforms:case>
 						<xforms:case id="json-error">
 							<xforms:group ref=".[count(//record[@migrate=true()]) = 0]">
@@ -875,6 +906,6 @@
 				</div>
 			</div>
 		</div>
-		<!--<fr:xforms-inspector></fr:xforms-inspector>-->
+		<!--<fr:xforms-inspector/>-->
 	</body>
 </html>

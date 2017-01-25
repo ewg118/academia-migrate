@@ -229,6 +229,8 @@ function process_html($output, $writer) {
 							$writer->writeAttribute('filename', '');
 							$writer->writeAttribute('mediatype', '');
 							$writer->writeAttribute('size');
+							$writer->writeAttribute('encoded_filename', '');
+							$writer->writeAttribute('filename_valid', 'false');
 						$writer->endElement();
 						
 						//end individual record
